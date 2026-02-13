@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(pip3 install:*)",
+      "Bash(python -c:*)",
+      "Bash(ls:*)",
+      "Bash(timeout:*)",
+      "Bash(gtimeout:*)",
+      "Bash(pip install:*)",
+      "mcp__ide__getDiagnostics"
+    ]
+  }
+}
