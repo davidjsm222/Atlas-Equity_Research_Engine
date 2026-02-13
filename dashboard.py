@@ -20,6 +20,143 @@ from fetch_market_data import fetch_market_data
 # ---------------------------------------------------------------------------
 st.set_page_config(page_title="Quarterly Metrics Dashboard", layout="wide")
 
+
+def inject_terminal_theme():
+    """Inject Bloomberg Terminal-inspired CSS for dense, high-contrast UI."""
+    terminal_css = """
+    <style>
+    /* Global density: reduce padding/margins */
+    .main .block-container {
+        padding-top: 1rem;
+        padding-bottom: 1rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        max-width: 100%;
+    }
+
+    /* Metrics: terminal KPI panel style */
+    [data-testid="stMetric"] {
+        background-color: #111111;
+        padding: 0.75rem;
+        border: 1px solid #333333;
+        border-radius: 2px;
+    }
+    [data-testid="stMetricValue"] {
+        font-family: 'Courier New', monospace;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #FFB000;
+    }
+    [data-testid="stMetricLabel"] {
+        font-size: 0.75rem;
+        color: #A0A0A0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Tables: dense, monospace numbers, right-aligned */
+    .dataframe {
+        font-size: 0.75rem;
+        border-collapse: collapse;
+    }
+    .dataframe td {
+        padding: 0.25rem 0.5rem;
+        border-bottom: 1px solid #222222;
+    }
+    .dataframe th {
+        background-color: #141414;
+        color: #EAEAEA;
+        font-weight: 600;
+        padding: 0.5rem;
+        border-bottom: 2px solid #333333;
+        text-align: left;
+    }
+    /* Right-align numeric columns */
+    .dataframe td:nth-child(n+4) {
+        text-align: right;
+        font-family: 'Courier New', monospace;
+    }
+
+    /* Headers: terminal-style */
+    h1 {
+        color: #FFB000;
+        font-size: 1.5rem;
+        font-weight: 600;
+        border-bottom: 2px solid #333333;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    h2, h3 {
+        color: #EAEAEA;
+        font-size: 1rem;
+        font-weight: 600;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* Expanders: panel style */
+    .streamlit-expanderHeader {
+        background-color: #141414;
+        border: 1px solid #333333;
+        color: #EAEAEA;
+    }
+
+    /* Remove Streamlit branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    </style>
+    """
+    st.markdown(terminal_css, unsafe_allow_html=True)
+
+
+inject_terminal_theme()
+
+# Bloomberg Terminal-inspired color palette
+TERMINAL_COLORS = {
+    "bg_primary": "#0B0B0B",
+    "bg_panel": "#111111",
+    "bg_panel_light": "#141414",
+    "text_primary": "#EAEAEA",
+    "text_muted": "#A0A0A0",
+    "accent": "#FFB000",  # Amber/orange
+    "positive": "#00FF00",  # Bright green
+    "negative": "#FF0000",  # Bright red
+    "neutral": "#00FFFF",  # Cyan
+    "border": "#333333",
+}
+
+
+def apply_terminal_chart_theme(fig):
+    """Apply Bloomberg Terminal theme to Plotly chart."""
+    fig.update_layout(
+        template="plotly_dark",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        font=dict(family="Courier New, monospace", size=10, color="#EAEAEA"),
+        xaxis=dict(
+            gridcolor="#333333",
+            gridwidth=1,
+            showgrid=True,
+            zeroline=False,
+        ),
+        yaxis=dict(
+            gridcolor="#333333",
+            gridwidth=1,
+            showgrid=True,
+            zeroline=False,
+        ),
+        legend=dict(
+            bgcolor="rgba(0,0,0,0)",
+            bordercolor="#333333",
+            borderwidth=1,
+            font=dict(size=9),
+        ),
+        margin=dict(l=40, r=20, t=20, b=40),
+    )
+    return fig
+
+
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "processed_data")
 
 # ---------------------------------------------------------------------------
@@ -219,8 +356,60 @@ for _name, _df in company_data.items():
 # ---------------------------------------------------------------------------
 # Sidebar navigation
 # ---------------------------------------------------------------------------
-st.sidebar.title("Navigation")
-page = st.sidebar.radio("View", ["Overview", "Company Deep Dive", "Peer Comparison"])
+def get_terminal_table_styles():
+    """Return table styles for terminal theme."""
+    return [
+        {
+            "selector": "thead th",
+            "props": [
+                ("background-color", TERMINAL_COLORS["bg_panel_light"]),
+                ("color", TERMINAL_COLORS["text_primary"]),
+                ("font-family", "monospace"),
+                ("font-size", "0.75rem"),
+                ("font-weight", "600"),
+                ("border-bottom", f"2px solid {TERMINAL_COLORS['border']}"),
+            ],
+        },
+        {
+            "selector": "tbody td",
+            "props": [
+                ("font-size", "0.75rem"),
+                ("padding", "0.25rem 0.5rem"),
+                ("border-bottom", f"1px solid {TERMINAL_COLORS['border']}"),
+            ],
+        },
+        {
+            "selector": "tbody td:nth-child(n+4)",
+            "props": [
+                ("text-align", "right"),
+                ("font-family", "monospace"),
+            ],
+        },
+    ]
+
+
+def render_top_bar(page_name: str, company_names: list = None, selected: str = None):
+    """Render Bloomberg-style top command bar."""
+    top_bar_html = f"""
+    <div style="background-color: #111111; border-bottom: 2px solid #333333; padding: 0.5rem 1rem; margin-bottom: 1rem;">
+        <div style="display: flex; align-items: center; gap: 2rem;">
+            <span style="color: #FFB000; font-weight: bold; font-family: monospace;">{page_name}</span>
+    """
+    if company_names and selected:
+        top_bar_html += f"""
+            <span style="color: #A0A0A0;">|</span>
+            <span style="color: #EAEAEA; font-family: monospace;">{selected}</span>
+        """
+    top_bar_html += "</div></div>"
+    st.markdown(top_bar_html, unsafe_allow_html=True)
+
+
+st.sidebar.markdown("""
+    <div style="background-color: #111111; padding: 1rem; border-bottom: 2px solid #333333;">
+        <h2 style="color: #FFB000; font-family: monospace; margin: 0;">NAV</h2>
+    </div>
+""", unsafe_allow_html=True)
+page = st.sidebar.radio("View", ["Overview", "Company Deep Dive", "Peer Comparison"], label_visibility="collapsed")
 
 # ---------------------------------------------------------------------------
 # Helper: format helpers
@@ -249,9 +438,9 @@ def color_revenue_growth(v):
     if pd.isna(v):
         return ""
     if v > 0.20:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 0.05:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -259,9 +448,9 @@ def color_margin(v):
     if pd.isna(v):
         return ""
     if v > 0.70:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 0.40:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -269,9 +458,9 @@ def color_op_margin(v):
     if pd.isna(v):
         return ""
     if v > 0.20:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 0.0:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -279,9 +468,9 @@ def color_delta(v):
     if pd.isna(v):
         return ""
     if v > 0.02:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < -0.02:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -290,9 +479,9 @@ def color_margin_trend(v):
     if pd.isna(v) or v == "":
         return ""
     if v == "Expanding":
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v == "Contracting":
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""  # Stable gets no color
 
 
@@ -328,9 +517,9 @@ def color_current_ratio(v):
     if pd.isna(v):
         return ""
     if v >= 2.0:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 1.0:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -338,9 +527,9 @@ def color_roe(v):
     if pd.isna(v):
         return ""
     if v > 0.10:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 0:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -348,11 +537,11 @@ def color_debt_to_equity(v):
     if pd.isna(v):
         return ""
     if v < 0:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     if v > 2.0:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     if v <= 0.5:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     return ""
 
 
@@ -360,9 +549,9 @@ def color_fcf_yield(v):
     if pd.isna(v):
         return ""
     if v > 0.05:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 0.02:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -370,11 +559,11 @@ def color_p_fcf(v):
     if pd.isna(v):
         return ""
     if v < 0:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     if v < 15:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v > 30:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -382,9 +571,9 @@ def color_deferred_rev_growth(v):
     if pd.isna(v):
         return ""
     if v > 0.20:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 0.05:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -392,9 +581,9 @@ def color_rule_of_40(v):
     if pd.isna(v):
         return ""
     if v >= 0.40:
-        return "color: #0a7c42"
+        return f"color: {TERMINAL_COLORS['positive']}"
     if v < 0.20:
-        return "color: #c0392b"
+        return f"color: {TERMINAL_COLORS['negative']}"
     return ""
 
 
@@ -403,17 +592,18 @@ def color_data_age(v):
     if pd.isna(v):
         return ""
     if v < 30:
-        return "color: #0a7c42"  # Green - fresh
+        return f"color: {TERMINAL_COLORS['positive']}"  # Green - fresh
     if v < 90:
-        return "color: #F39C12"  # Yellow - aging
-    return "color: #c0392b"  # Red - stale
+        return f"color: {TERMINAL_COLORS['accent']}"  # Yellow - aging
+    return f"color: {TERMINAL_COLORS['negative']}"  # Red - stale
 
 
 # ---------------------------------------------------------------------------
 # PAGE: Overview
 # ---------------------------------------------------------------------------
 if page == "Overview":
-    st.title("Overview — Most Recent Quarter")
+    render_top_bar("OVERVIEW", company_names=None)
+    st.markdown('<h1 style="color: #FFB000; font-family: monospace;">OVERVIEW</h1>', unsafe_allow_html=True)
 
     # Metric definitions expander
     with st.expander("Metric Definitions (Click to expand)"):
@@ -555,6 +745,7 @@ if page == "Overview":
         .map(color_deferred_rev_growth, subset=["Def Rev Growth YoY"])
         .map(color_rule_of_40, subset=["Rule of 40"])
         .map(color_data_age, subset=["Data Age (days)"])
+        .set_table_styles(get_terminal_table_styles())
         .hide(axis="index")
     )
 
@@ -582,7 +773,8 @@ elif page == "Company Deep Dive":
     selected = st.sidebar.selectbox("Select Company", company_names)
     df = company_data[selected].copy()
 
-    st.title(f"Company Deep Dive — {selected}")
+    render_top_bar("COMPANY DEEP DIVE", company_names=company_names, selected=selected)
+    st.markdown(f'<h1 style="color: #FFB000; font-family: monospace;">DEEP DIVE: {selected}</h1>', unsafe_allow_html=True)
 
     # Data freshness for this company
     freshness = analyze_data_freshness(company_data)
@@ -654,8 +846,9 @@ elif page == "Company Deep Dive":
             y="Revenue",
             text=df["Revenue"].apply(lambda v: f"${v/1000:,.0f}M"),
         )
-        fig.update_traces(textposition="outside", marker_color="#4A90D9")
+        fig.update_traces(textposition="outside", marker_color=TERMINAL_COLORS["neutral"])
         fig.update_layout(yaxis_title="Revenue ($K)", xaxis_title="", showlegend=False)
+        fig = apply_terminal_chart_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     # --- Revenue Growth YoY ---
@@ -668,12 +861,13 @@ elif page == "Company Deep Dive":
             y="Revenue_Growth_YoY",
             markers=True,
         )
-        fig.update_traces(line_color="#E67E22")
+        fig.update_traces(line_color=TERMINAL_COLORS["accent"])
         fig.update_layout(
             yaxis_title="Growth %",
             yaxis_tickformat=".0%",
             xaxis_title="",
         )
+        fig = apply_terminal_chart_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     col3, col4 = st.columns(2)
@@ -689,7 +883,7 @@ elif page == "Company Deep Dive":
                     y=df["Gross_Margin"],
                     mode="lines+markers",
                     name="Gross Margin",
-                    line=dict(color="#2ECC71"),
+                    line=dict(color=TERMINAL_COLORS["positive"]),
                 )
             )
         fig.add_trace(
@@ -698,7 +892,7 @@ elif page == "Company Deep Dive":
                 y=df["Operating_Margin"],
                 mode="lines+markers",
                 name="Operating Margin",
-                line=dict(color="#9B59B6"),
+                line=dict(color=TERMINAL_COLORS["neutral"]),
             )
         )
         fig.update_layout(
@@ -707,6 +901,7 @@ elif page == "Company Deep Dive":
             xaxis_title="",
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
         )
+        fig = apply_terminal_chart_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     # --- Operating Margin Delta YoY ---
@@ -719,7 +914,7 @@ elif page == "Company Deep Dive":
             y="Operating_Margin_Delta_YoY",
             markers=True,
         )
-        fig.update_traces(line_color="#E74C3C")
+        fig.update_traces(line_color=TERMINAL_COLORS["negative"])
         fig.update_layout(
             yaxis_title="Delta (pp)",
             yaxis_tickformat=".1%",
@@ -727,6 +922,7 @@ elif page == "Company Deep Dive":
         )
         # Add a zero reference line
         fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        fig = apply_terminal_chart_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     # --- Margin Trend Analysis ---
@@ -743,13 +939,13 @@ elif page == "Company Deep Dive":
         
         if avg_delta > 0.02:
             trend_label = "Expanding"
-            trend_color = "#0a7c42"
+            trend_color = TERMINAL_COLORS["positive"]
         elif avg_delta < -0.02:
             trend_label = "Contracting"
-            trend_color = "#c0392b"
+            trend_color = TERMINAL_COLORS["negative"]
         else:
             trend_label = "Stable"
-            trend_color = "#F39C12"
+            trend_color = TERMINAL_COLORS["accent"]
         
         # Display summary
         st.markdown("---")
@@ -783,7 +979,7 @@ elif page == "Company Deep Dive":
                 x=margin_trend_df["Quarter"],
                 y=margin_trend_df["Operating_Margin_Delta_YoY"],
                 name="Quarterly Delta",
-                marker_color=["#0a7c42" if v > 0 else "#c0392b" for v in margin_trend_df["Operating_Margin_Delta_YoY"]],
+                marker_color=[TERMINAL_COLORS["positive"] if v > 0 else TERMINAL_COLORS["negative"] for v in margin_trend_df["Operating_Margin_Delta_YoY"]],
                 opacity=0.3,
             )
         )
@@ -795,6 +991,7 @@ elif page == "Company Deep Dive":
             legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
         )
         fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+        fig = apply_terminal_chart_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
 
     # --- TTM Metrics (Smoothed Quarterly Volatility) ---
@@ -817,7 +1014,7 @@ elif page == "Company Deep Dive":
                     y=df["Revenue"], 
                     mode="lines+markers", 
                     name="Quarterly",
-                    line=dict(color="#4A90D9", dash="dot", width=2),
+                    line=dict(color=TERMINAL_COLORS["neutral"], dash="dot", width=2),
                     marker=dict(size=6),
                 ))
                 # TTM revenue (solid line)
@@ -826,7 +1023,7 @@ elif page == "Company Deep Dive":
                     y=ttm_df["TTM_Revenue"],
                     mode="lines+markers", 
                     name="TTM (4Q Sum)",
-                    line=dict(color="#2ECC71", width=3),
+                    line=dict(color=TERMINAL_COLORS["positive"], width=3),
                     marker=dict(size=8),
                 ))
                 fig.update_layout(
@@ -834,6 +1031,7 @@ elif page == "Company Deep Dive":
                     xaxis_title="",
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
                 )
+                fig = apply_terminal_chart_theme(fig)
                 st.plotly_chart(fig, use_container_width=True)
             
             with col_ttm2:
@@ -845,7 +1043,7 @@ elif page == "Company Deep Dive":
                     y=df["Operating_Margin"], 
                     mode="lines+markers", 
                     name="Quarterly",
-                    line=dict(color="#9B59B6", dash="dot", width=2),
+                    line=dict(color=TERMINAL_COLORS["neutral"], dash="dot", width=2),
                     marker=dict(size=6),
                 ))
                 # TTM operating margin (solid line)
@@ -855,7 +1053,7 @@ elif page == "Company Deep Dive":
                         y=ttm_df["TTM_Operating_Margin"],
                         mode="lines+markers", 
                         name="TTM (4Q Avg)",
-                        line=dict(color="#E67E22", width=3),
+                        line=dict(color=TERMINAL_COLORS["accent"], width=3),
                         marker=dict(size=8),
                     ))
                 fig.update_layout(
@@ -865,6 +1063,7 @@ elif page == "Company Deep Dive":
                     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
                 )
                 fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+                fig = apply_terminal_chart_theme(fig)
                 st.plotly_chart(fig, use_container_width=True)
 
     # --- Net Debt & ROE charts ---
@@ -876,7 +1075,7 @@ elif page == "Company Deep Dive":
         with col5:
             st.subheader("Net Debt")
             nd_df = df.dropna(subset=["Net_Debt"])
-            colors = ["#c0392b" if v > 0 else "#0a7c42" for v in nd_df["Net_Debt"]]
+            colors = [TERMINAL_COLORS["negative"] if v > 0 else TERMINAL_COLORS["positive"] for v in nd_df["Net_Debt"]]
             fig = go.Figure(
                 go.Bar(
                     x=nd_df["Quarter"],
@@ -888,6 +1087,7 @@ elif page == "Company Deep Dive":
             )
             fig.update_layout(yaxis_title="Net Debt ($K)", xaxis_title="")
             fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+            fig = apply_terminal_chart_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
 
         with col6:
@@ -895,13 +1095,14 @@ elif page == "Company Deep Dive":
             roe_df = df.dropna(subset=["ROE"])
             if not roe_df.empty:
                 fig = px.line(roe_df, x="Quarter", y="ROE", markers=True)
-                fig.update_traces(line_color="#8E44AD")
+                fig.update_traces(line_color=TERMINAL_COLORS["neutral"])
                 fig.update_layout(
                     yaxis_title="ROE",
                     yaxis_tickformat=".0%",
                     xaxis_title="",
                 )
                 fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+                fig = apply_terminal_chart_theme(fig)
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("No ROE data available (Net Income not found).")
@@ -922,8 +1123,9 @@ elif page == "Company Deep Dive":
                 y="Deferred_Revenue_M",
                 text=dr_df["Deferred_Revenue_M"].apply(lambda v: f"${v:,.0f}M"),
             )
-            fig.update_traces(textposition="outside", marker_color="#1ABC9C")
+            fig.update_traces(textposition="outside", marker_color=TERMINAL_COLORS["neutral"])
             fig.update_layout(yaxis_title="Deferred Revenue ($M)", xaxis_title="", showlegend=False)
+            fig = apply_terminal_chart_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
 
         with col8:
@@ -936,13 +1138,14 @@ elif page == "Company Deep Dive":
                     y="Deferred_Revenue_Growth_YoY",
                     markers=True,
                 )
-                fig.update_traces(line_color="#F39C12")
+                fig.update_traces(line_color=TERMINAL_COLORS["accent"])
                 fig.update_layout(
                     yaxis_title="Growth %",
                     yaxis_tickformat=".0%",
                     xaxis_title="",
                 )
                 fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+                fig = apply_terminal_chart_theme(fig)
                 st.plotly_chart(fig, use_container_width=True)
             else:
                 st.info("Not enough historical data for Deferred Revenue Growth YoY.")
@@ -957,12 +1160,13 @@ elif page == "Company Deep Dive":
                 y="Revenue_Recognition_Quality",
                 markers=True,
             )
-            fig.update_traces(line_color="#3498DB")
+            fig.update_traces(line_color=TERMINAL_COLORS["neutral"])
             fig.update_layout(
                 yaxis_title="Deferred Rev / Revenue",
                 yaxis_tickformat=".2f",
                 xaxis_title="",
             )
+            fig = apply_terminal_chart_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
 
     # --- Rule of 40 Chart ---
@@ -1001,7 +1205,7 @@ elif page == "Company Deep Dive":
             
             # Determine line color based on whether it meets threshold
             avg_rule_40 = rule_40_df["Rule_of_40"].mean()
-            line_color = "#27AE60" if avg_rule_40 >= 0.40 else "#E74C3C"
+            line_color = TERMINAL_COLORS["positive"] if avg_rule_40 >= 0.40 else TERMINAL_COLORS["negative"]
             
             fig = px.line(
                 rule_40_df,
@@ -1024,6 +1228,7 @@ elif page == "Company Deep Dive":
                 annotation_text="40% Benchmark",
                 annotation_position="right"
             )
+            fig = apply_terminal_chart_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
 
     # --- Full data table ---
@@ -1058,7 +1263,7 @@ elif page == "Company Deep Dive":
     # Only format columns that exist in the dataframe
     table_fmt = {k: v for k, v in table_fmt.items() if k in table_df.columns}
     st.dataframe(
-        table_df.style.format(table_fmt).hide(axis="index"),
+        table_df.style.format(table_fmt).set_table_styles(get_terminal_table_styles()).hide(axis="index"),
         use_container_width=True,
         hide_index=True,
     )
@@ -1071,7 +1276,7 @@ elif page == "Company Deep Dive":
         # FCF bar chart
         fcf_plot = cf_df.dropna(subset=["Free_Cash_Flow"])
         if not fcf_plot.empty:
-            colors = ["#0a7c42" if v >= 0 else "#c0392b" for v in fcf_plot["Free_Cash_Flow"]]
+            colors = [TERMINAL_COLORS["positive"] if v >= 0 else TERMINAL_COLORS["negative"] for v in fcf_plot["Free_Cash_Flow"]]
             fig = go.Figure(
                 go.Bar(
                     x=fcf_plot["Quarter"],
@@ -1087,6 +1292,7 @@ elif page == "Company Deep Dive":
                 height=350,
             )
             fig.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
+            fig = apply_terminal_chart_theme(fig)
             st.plotly_chart(fig, use_container_width=True)
 
         # Cash flow data table
@@ -1101,7 +1307,7 @@ elif page == "Company Deep Dive":
         }
         cf_table_fmt = {k: v for k, v in cf_table_fmt.items() if k in cf_table.columns}
         st.dataframe(
-            cf_table.style.format(cf_table_fmt).hide(axis="index"),
+            cf_table.style.format(cf_table_fmt).set_table_styles(get_terminal_table_styles()).hide(axis="index"),
             use_container_width=True,
             hide_index=True,
         )
@@ -1110,7 +1316,8 @@ elif page == "Company Deep Dive":
 # PAGE: Peer Comparison
 # ---------------------------------------------------------------------------
 elif page == "Peer Comparison":
-    st.title("Peer Comparison — Most Recent Quarter")
+    render_top_bar("PEER COMPARISON", company_names=None)
+    st.markdown('<h1 style="color: #FFB000; font-family: monospace;">PEER COMPARISON</h1>', unsafe_allow_html=True)
 
     # Metric definitions expander
     with st.expander("Metric Definitions (Click to expand)"):
@@ -1217,6 +1424,7 @@ elif page == "Peer Comparison":
         coloraxis_showscale=False,
         height=350,
     )
+    fig = apply_terminal_chart_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
     if comp[metric_col].isna().any():
@@ -1235,7 +1443,7 @@ elif page == "Peer Comparison":
     )
     fig.update_traces(
         textposition="top center",
-        marker=dict(size=14, color="#4A90D9"),
+        marker=dict(size=14, color=TERMINAL_COLORS["neutral"]),
     )
     fig.update_layout(
         xaxis_title="Revenue Growth YoY",
@@ -1258,6 +1466,7 @@ elif page == "Peer Comparison":
             line_color="gray",
             opacity=0.4,
         )
+    fig = apply_terminal_chart_theme(fig)
     st.plotly_chart(fig, use_container_width=True)
 
     # --- Scatter: Revenue Growth vs Margin Trend (Efficiency Scaling Analysis) ---
@@ -1283,10 +1492,10 @@ elif page == "Peer Comparison":
         
         # Color mapping for quadrants
         color_map = {
-            "Efficient Scaling": "#0a7c42",      # Green
-            "Margin Improvement": "#F39C12",     # Yellow/Orange
-            "Growth at Cost": "#E67E22",         # Orange
-            "Deteriorating": "#c0392b",          # Red
+            "Efficient Scaling": TERMINAL_COLORS["positive"],
+            "Margin Improvement": TERMINAL_COLORS["accent"],
+            "Growth at Cost": "#E67E22",  # Orange
+            "Deteriorating": TERMINAL_COLORS["negative"],
         }
         
         fig = px.scatter(
@@ -1336,6 +1545,7 @@ elif page == "Peer Comparison":
             annotation_position="right",
         )
         
+        fig = apply_terminal_chart_theme(fig)
         st.plotly_chart(fig, use_container_width=True)
         
         st.caption(
