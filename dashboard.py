@@ -18,7 +18,11 @@ from fetch_market_data import fetch_market_data
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
-st.set_page_config(page_title="Quarterly Metrics Dashboard", layout="wide")
+st.set_page_config(
+    page_title="Quarterly Metrics Dashboard",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 
 def inject_terminal_theme():
@@ -101,10 +105,30 @@ def inject_terminal_theme():
         color: #EAEAEA;
     }
 
-    /* Remove Streamlit branding */
+    /* Remove Streamlit branding - do NOT hide header; it contains the sidebar expand control */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
+    
+    /* Ensure sidebar toggle is always visible and accessible */
+    [data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+    }
+    button[data-testid="collapsedControl"] {
+        display: flex !important;
+        visibility: visible !important;
+        opacity: 1 !important;
+        z-index: 999 !important;
+    }
+    /* Ensure sidebar container doesn't hide toggle */
+    section[data-testid="stSidebar"] {
+        min-width: 0;
+    }
+    /* Prevent any overlay from blocking toggle */
+    .stApp > header ~ div {
+        z-index: auto;
+    }
     </style>
     """
     st.markdown(terminal_css, unsafe_allow_html=True)
@@ -288,6 +312,33 @@ def analyze_data_freshness(company_data):
     return freshness
 
 
+def format_fy_quarter(quarter_str):
+    """Convert quarter string from '2025 FQ4' format to 'FY2025 Q4' format."""
+    if not quarter_str:
+        return "N/A"
+    parts = quarter_str.split()
+    if len(parts) >= 2 and "FQ" in parts[1]:
+        year = parts[0]
+        q_num = parts[1].replace("FQ", "Q")
+        return f"FY{year} {q_num}"
+    return quarter_str  # Fallback to original if format unexpected
+
+
+def _fy_quarter_sort_key(quarter_str):
+    """Return (year, quarter) for sorting; FY Q3 2025 < FY Q4 2025."""
+    if not quarter_str:
+        return (0, 0)
+    parts = quarter_str.split()
+    if len(parts) >= 2 and "FQ" in parts[1]:
+        try:
+            year = int(parts[0])
+            q = int(parts[1].replace("FQ", ""))
+            return (year, q)
+        except (ValueError, TypeError):
+            pass
+    return (0, 0)
+
+
 # ---------------------------------------------------------------------------
 # Market data & valuation metrics
 # ---------------------------------------------------------------------------
@@ -390,17 +441,10 @@ def get_terminal_table_styles():
 
 def render_top_bar(page_name: str, company_names: list = None, selected: str = None):
     """Render Bloomberg-style top command bar."""
-    top_bar_html = f"""
-    <div style="background-color: #111111; border-bottom: 2px solid #333333; padding: 0.5rem 1rem; margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; gap: 2rem;">
-            <span style="color: #FFB000; font-weight: bold; font-family: monospace;">{page_name}</span>
-    """
     if company_names and selected:
-        top_bar_html += f"""
-            <span style="color: #A0A0A0;">|</span>
-            <span style="color: #EAEAEA; font-family: monospace;">{selected}</span>
-        """
-    top_bar_html += "</div></div>"
+        top_bar_html = f'<div style="background-color: #111111; border-bottom: 2px solid #333333; padding: 0.5rem 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 2rem;"><span style="color: #FFB000; font-weight: bold; font-family: monospace;">{page_name}</span><span style="color: #A0A0A0;">|</span><span style="color: #EAEAEA; font-family: monospace;">{selected}</span></div></div>'
+    else:
+        top_bar_html = f'<div style="background-color: #111111; border-bottom: 2px solid #333333; padding: 0.5rem 1rem; margin-bottom: 1rem;"><div style="display: flex; align-items: center; gap: 2rem;"><span style="color: #FFB000; font-weight: bold; font-family: monospace;">{page_name}</span></div></div>'
     st.markdown(top_bar_html, unsafe_allow_html=True)
 
 
@@ -409,6 +453,7 @@ st.sidebar.markdown("""
         <h2 style="color: #FFB000; font-family: monospace; margin: 0;">NAV</h2>
     </div>
 """, unsafe_allow_html=True)
+
 page = st.sidebar.radio("View", ["Overview", "Company Deep Dive", "Peer Comparison"], label_visibility="collapsed")
 
 # ---------------------------------------------------------------------------
@@ -635,16 +680,15 @@ if page == "Overview":
     if stale_companies:
         st.warning(f"Stale data detected for {len(stale_companies)} companies: {', '.join(stale_companies)}")
 
-    col_fresh1, col_fresh2, col_fresh3 = st.columns(3)
+    col_fresh1, col_fresh2 = st.columns(2)
     with col_fresh1:
-        avg_days = sum(f["days_old"] for f in freshness.values()) / len(freshness)
-        st.metric("Avg Data Age", f"{avg_days:.0f} days")
+        oldest = min(freshness.values(), key=lambda x: _fy_quarter_sort_key(x["latest_quarter"]))
+        oldest_fy_q = format_fy_quarter(oldest["latest_quarter"])
+        st.metric("Oldest Data", oldest_fy_q)
     with col_fresh2:
-        oldest = max(freshness.values(), key=lambda x: x["days_old"])
-        st.metric("Oldest Data", f"{oldest['days_old']} days", delta=oldest["latest_quarter"])
-    with col_fresh3:
-        newest = min(freshness.values(), key=lambda x: x["days_old"])
-        st.metric("Newest Data", f"{newest['days_old']} days", delta=newest["latest_quarter"])
+        newest = max(freshness.values(), key=lambda x: _fy_quarter_sort_key(x["latest_quarter"]))
+        newest_fy_q = format_fy_quarter(newest["latest_quarter"])
+        st.metric("Newest Data", newest_fy_q)
 
     rows = []
     for name, df in company_data.items():
@@ -692,7 +736,6 @@ if page == "Overview":
                 "Def Rev Growth YoY": last.get("Deferred_Revenue_Growth_YoY"),
                 "Rev Recog Quality": last.get("Revenue_Recognition_Quality"),
                 "Rule of 40": val.get("Rule_of_40"),
-                "Data Age (days)": freshness[name]["days_old"],
             }
         )
 
@@ -727,7 +770,6 @@ if page == "Overview":
                 "Def Rev Growth YoY": lambda v: fmt_pct(v),
                 "Rev Recog Quality": lambda v: fmt_ratio(v),
                 "Rule of 40": lambda v: fmt_pct(v),
-                "Data Age (days)": lambda v: f"{v:.0f}" if pd.notna(v) else "N/A",
             }
         )
         .map(color_fcf_yield, subset=["FCF Yield"])
@@ -744,7 +786,6 @@ if page == "Overview":
         .map(color_roe, subset=["ROE"])
         .map(color_deferred_rev_growth, subset=["Def Rev Growth YoY"])
         .map(color_rule_of_40, subset=["Rule of 40"])
-        .map(color_data_age, subset=["Data Age (days)"])
         .set_table_styles(get_terminal_table_styles())
         .hide(axis="index")
     )
@@ -786,8 +827,9 @@ elif page == "Company Deep Dive":
         date_str = fresh_info["latest_date"].strftime("%Y-%m-%d") if hasattr(fresh_info["latest_date"], "strftime") else str(fresh_info["latest_date"])[:10]
         st.info(f"As of: **{date_str}**")
     with col_info3:
-        age_color = "Fresh" if fresh_info["days_old"] < 30 else ("Aging" if fresh_info["days_old"] < 90 else "Stale")
-        st.info(f"Data Age: **{fresh_info['days_old']} days** ({age_color})")
+        # Format latest FY quarter (e.g., "2025 FQ4" -> "FY2025 Q4")
+        latest_fy_q = format_fy_quarter(fresh_info['latest_quarter'])
+        st.info(f"Latest FY Quarter: **{latest_fy_q}**")
 
     # Metric definitions expander
     with st.expander("Metric Definitions (Click to expand)"):
