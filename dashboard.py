@@ -454,7 +454,7 @@ st.sidebar.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-page = st.sidebar.radio("View", ["Overview", "Company Deep Dive", "Peer Comparison"], label_visibility="collapsed")
+page = st.sidebar.radio("View", ["Overview", "Company Deep Dive", "Peer Comparison", "Screener"], label_visibility="collapsed")
 
 # ---------------------------------------------------------------------------
 # Helper: format helpers
@@ -1599,3 +1599,249 @@ elif page == "Peer Comparison":
         )
     else:
         st.info("Not enough data for efficiency scaling analysis (requires both Revenue Growth and Margin Trend data).")
+
+# ---------------------------------------------------------------------------
+# PAGE: Screener
+# ---------------------------------------------------------------------------
+elif page == "Screener":
+    render_top_bar("INVESTMENT SCREENER", company_names=None)
+    st.markdown('<h1 style="color: #FFB000; font-family: monospace;">INVESTMENT SCREENER</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="color: #A0A0A0; font-size: 0.9rem; margin-top: -0.5rem;">Filter companies by investment criteria</p>', unsafe_allow_html=True)
+    
+    # Sidebar filters
+    st.sidebar.markdown("### Growth & Efficiency")
+    rule_of_40_min = st.sidebar.number_input("Rule of 40 (min)", min_value=0, max_value=100, value=40, step=5, key="screener_rule_of_40")
+    revenue_growth_min = st.sidebar.number_input("Revenue Growth YoY (min %)", min_value=0, max_value=100, value=15, step=5, key="screener_revenue_growth")
+    
+    st.sidebar.markdown("### Valuation")
+    p_fcf_max = st.sidebar.number_input("P/FCF (max)", min_value=0, max_value=100, value=25, step=5, key="screener_p_fcf")
+    fcf_yield_min = st.sidebar.number_input("FCF Yield (min %)", min_value=0, max_value=50, value=4, step=1, key="screener_fcf_yield")
+    
+    st.sidebar.markdown("### Quality")
+    margin_trend_filter = st.sidebar.selectbox("Margin Trend", ["Any", "Expanding", "Stable or Expanding"], key="screener_margin_trend")
+    
+    # Display current filter values
+    st.markdown("### Current Filter Values")
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.markdown("**Growth & Efficiency:**")
+        st.text(f"Rule of 40 (min): {rule_of_40_min}")
+        st.text(f"Revenue Growth YoY (min): {revenue_growth_min}%")
+    with col2:
+        st.markdown("**Valuation:**")
+        st.text(f"P/FCF (max): {p_fcf_max}")
+        st.text(f"FCF Yield (min): {fcf_yield_min}%")
+    with col3:
+        st.markdown("**Quality:**")
+        st.text(f"Margin Trend: {margin_trend_filter}")
+    
+    # Build screening DataFrame with latest quarter data
+    screening_rows = []
+    for name, df in company_data.items():
+        last = df.iloc[-1]
+        val = valuation.get(name, {})
+        
+        # Calculate Margin_Trend_4Q (same logic as Peer Comparison page)
+        _margin_deltas = df["Operating_Margin_Delta_YoY"].tail(4).dropna()
+        _margin_trend_4q = _margin_deltas.mean() if len(_margin_deltas) >= 3 else None
+        
+        screening_rows.append({
+            "Company": name,
+            "Ticker": val.get("Ticker"),
+            "Rule_of_40": val.get("Rule_of_40"),
+            "Revenue_Growth_YoY": last.get("Revenue_Growth_YoY"),
+            "P_FCF": val.get("P_FCF"),
+            "FCF_Yield": val.get("FCF_Yield"),
+            "Margin_Trend_4Q": _margin_trend_4q,
+        })
+    
+    screening_df = pd.DataFrame(screening_rows)
+    
+    # Convert percentage inputs to decimals for comparison
+    rule_of_40_min_decimal = rule_of_40_min / 100
+    revenue_growth_min_decimal = revenue_growth_min / 100
+    fcf_yield_min_decimal = fcf_yield_min / 100
+    
+    # Apply filters (handle NaN values - treat as not passing)
+    screening_df["passes_rule_of_40"] = (
+        screening_df["Rule_of_40"].notna() & 
+        (screening_df["Rule_of_40"] >= rule_of_40_min_decimal)
+    )
+    
+    screening_df["passes_revenue_growth"] = (
+        screening_df["Revenue_Growth_YoY"].notna() & 
+        (screening_df["Revenue_Growth_YoY"] >= revenue_growth_min_decimal)
+    )
+    
+    screening_df["passes_p_fcf"] = (
+        screening_df["P_FCF"].notna() & 
+        (screening_df["P_FCF"] <= p_fcf_max)
+    )
+    
+    screening_df["passes_fcf_yield"] = (
+        screening_df["FCF_Yield"].notna() & 
+        (screening_df["FCF_Yield"] >= fcf_yield_min_decimal)
+    )
+    
+    # Margin Trend filter (handle NaN - treat as not passing unless "Any")
+    if margin_trend_filter == "Any":
+        screening_df["passes_margin_trend"] = True
+    elif margin_trend_filter == "Expanding":
+        screening_df["passes_margin_trend"] = (
+            screening_df["Margin_Trend_4Q"].notna() & 
+            (screening_df["Margin_Trend_4Q"] > 0)
+        )
+    elif margin_trend_filter == "Stable or Expanding":
+        screening_df["passes_margin_trend"] = (
+            screening_df["Margin_Trend_4Q"].notna() & 
+            (screening_df["Margin_Trend_4Q"] >= 0)
+        )
+    
+    # Count filters passed (sum of boolean columns)
+    filter_cols = [
+        "passes_rule_of_40",
+        "passes_revenue_growth", 
+        "passes_p_fcf",
+        "passes_fcf_yield",
+        "passes_margin_trend"
+    ]
+    screening_df["filters_passed"] = screening_df[filter_cols].sum(axis=1)
+    screening_df["passes_all"] = screening_df["filters_passed"] == len(filter_cols)
+    
+    # Table 1: Companies Meeting All Criteria
+    st.markdown("### Companies Meeting All Criteria")
+    meets_all = screening_df[screening_df["passes_all"]].copy()
+    if not meets_all.empty:
+        # Select columns to display
+        display_cols = ["Company", "Ticker", "Rule_of_40", "Revenue_Growth_YoY", 
+                        "P_FCF", "FCF_Yield", "Margin_Trend_4Q", "filters_passed"]
+        meets_all_display = meets_all[display_cols].copy()
+        
+        # Format percentages for display
+        meets_all_display["Rule_of_40"] = meets_all_display["Rule_of_40"].apply(
+            lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A"
+        )
+        meets_all_display["Revenue_Growth_YoY"] = meets_all_display["Revenue_Growth_YoY"].apply(
+            lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A"
+        )
+        meets_all_display["FCF_Yield"] = meets_all_display["FCF_Yield"].apply(
+            lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A"
+        )
+        meets_all_display["Margin_Trend_4Q"] = meets_all_display["Margin_Trend_4Q"].apply(
+            lambda x: f"{x*100:.2f}%" if pd.notna(x) else "N/A"
+        )
+        meets_all_display["P_FCF"] = meets_all_display["P_FCF"].apply(
+            lambda x: f"{x:.1f}x" if pd.notna(x) else "N/A"
+        )
+        
+        # Rename columns for display
+        meets_all_display.columns = ["Company", "Ticker", "Rule of 40", "Revenue Growth YoY",
+                                    "P/FCF", "FCF Yield", "Margin Trend (4Q)", "Filters Passed"]
+        
+        st.dataframe(meets_all_display, use_container_width=True, hide_index=True)
+    else:
+        st.info("No companies meet all criteria. Adjust filters to see results.")
+    
+    # Table 2: All Companies Ranked by Filters Passed
+    st.markdown("### All Companies Ranked by Filters Passed")
+    all_ranked = screening_df.sort_values("filters_passed", ascending=False).copy()
+    
+    # Create "Failed Filters" column with actual values
+    def get_failed_filters(row):
+        """Generate text showing which filters failed and their actual values."""
+        failed = []
+        
+        if not row["passes_rule_of_40"]:
+            actual_val = row["Rule_of_40"]
+            if pd.notna(actual_val):
+                failed.append(f"Rule of 40 (actual: {actual_val*100:.1f}%)")
+            else:
+                failed.append("Rule of 40 (N/A)")
+        
+        if not row["passes_revenue_growth"]:
+            actual_val = row["Revenue_Growth_YoY"]
+            if pd.notna(actual_val):
+                failed.append(f"Revenue Growth YoY (actual: {actual_val*100:.1f}%)")
+            else:
+                failed.append("Revenue Growth YoY (N/A)")
+        
+        if not row["passes_p_fcf"]:
+            actual_val = row["P_FCF"]
+            if pd.notna(actual_val):
+                failed.append(f"P/FCF (actual: {actual_val:.1f}x)")
+            else:
+                failed.append("P/FCF (N/A)")
+        
+        if not row["passes_fcf_yield"]:
+            actual_val = row["FCF_Yield"]
+            if pd.notna(actual_val):
+                failed.append(f"FCF Yield (actual: {actual_val*100:.1f}%)")
+            else:
+                failed.append("FCF Yield (N/A)")
+        
+        if not row["passes_margin_trend"]:
+            actual_val = row["Margin_Trend_4Q"]
+            if pd.notna(actual_val):
+                failed.append(f"Margin Trend (actual: {actual_val*100:.2f}%)")
+            else:
+                failed.append("Margin Trend (N/A)")
+        
+        if failed:
+            return "Failed: " + ", ".join(failed)
+        else:
+            return "All filters passed"
+    
+    all_ranked["Failed_Filters"] = all_ranked.apply(get_failed_filters, axis=1)
+    
+    # Same formatting as above
+    display_cols = ["Company", "Ticker", "Rule_of_40", "Revenue_Growth_YoY",
+                    "P_FCF", "FCF_Yield", "Margin_Trend_4Q", "filters_passed", "passes_all", "Failed_Filters"]
+    all_ranked_display = all_ranked[display_cols].copy()
+    
+    # Apply same formatting
+    all_ranked_display["Rule_of_40"] = all_ranked_display["Rule_of_40"].apply(
+        lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A"
+    )
+    all_ranked_display["Revenue_Growth_YoY"] = all_ranked_display["Revenue_Growth_YoY"].apply(
+        lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A"
+    )
+    all_ranked_display["FCF_Yield"] = all_ranked_display["FCF_Yield"].apply(
+        lambda x: f"{x*100:.1f}%" if pd.notna(x) else "N/A"
+    )
+    all_ranked_display["Margin_Trend_4Q"] = all_ranked_display["Margin_Trend_4Q"].apply(
+        lambda x: f"{x*100:.2f}%" if pd.notna(x) else "N/A"
+    )
+    all_ranked_display["P_FCF"] = all_ranked_display["P_FCF"].apply(
+        lambda x: f"{x:.1f}x" if pd.notna(x) else "N/A"
+    )
+    all_ranked_display["passes_all"] = all_ranked_display["passes_all"].apply(
+        lambda x: "Yes" if x else "No"
+    )
+    
+    # Rename columns
+    all_ranked_display.columns = ["Company", "Ticker", "Rule of 40", "Revenue Growth YoY",
+                                  "P/FCF", "FCF Yield", "Margin Trend (4Q)", "Filters Passed", "Meets All", "Failed Filters"]
+    
+    # Apply row-level color coding based on filters_passed percentage
+    total_filters = len(filter_cols)  # Should be 5
+    def color_row_by_percentage(row):
+        """Apply background color based on filters passed percentage."""
+        filters_passed = row["Filters Passed"]
+        percentage = filters_passed / total_filters
+        
+        if percentage == 1.0:  # Passes all (100%)
+            return ['background-color: #1a4d1a'] * len(row)  # Dark green
+        elif percentage >= 0.7:  # Passes 70%+ (3.5+ filters, so 4 or 5 filters)
+            return ['background-color: #4d4d1a'] * len(row)  # Dark yellow/olive
+        elif percentage < 0.5:  # Passes <50% (<2.5 filters, so 0, 1, or 2 filters)
+            return ['background-color: #4d1a1a'] * len(row)  # Dark red
+        else:  # 50% to <70% (3 filters = 60%) - no special color
+            return [''] * len(row)
+    
+    styled_all_ranked = (
+        all_ranked_display.style
+        .apply(color_row_by_percentage, axis=1)
+        .set_table_styles(get_terminal_table_styles())
+    )
+    
+    st.dataframe(styled_all_ranked, use_container_width=True, hide_index=True)
