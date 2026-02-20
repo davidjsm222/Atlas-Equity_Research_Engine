@@ -80,10 +80,12 @@ def parse_capiq_income_statement(
         "revenue": [
             "Total Revenues",
             "Total Revenue",
-            "Revenues",
-            "Revenue",
             "Net Revenues",
             "Net Revenue",
+            "Net Sales",
+            "Revenues",
+            "Revenue",
+            "Ciq Balancing Calc.-revenue",
         ],
         "gross_profit": [
             "Gross Profit/loss",
@@ -351,10 +353,20 @@ def parse_capiq_balance_sheet(
         "Long-term Debt",
         "Long-term Debt Net",
         "Long-term Debt, Net",
+        "Long-term Debts, Net of Current Portion",
+        "Long-term Borrowings",
+        "Notes Payable and Long-term Debt, Less Current Installments",
+        "Notes Payable, Long-term Debt and Long-term Lease Obligations Less Current Installments",
+        "Long-term Portion of Borrowings Under Credit Facility and Lease Obligations",
         "Short-term Borrowings",
         "Short-term Debt",
+        "Borrowings, Current",
+        "Bank Borrowings and Current Portion of Long-term Debt",
         "Current Portion of Long-term Debt",
         "Current Portion Of Long-Term Debt",
+        "Current Installments of Notes Payable and Long-term Debt",
+        "Current Installments of Notes Payable, Long-term Debt and Capital Lease Obligations",
+        "Current Portion of Borrowings Under Credit Facility and Finance Lease Obligations",
     ]
 
     # Deferred revenue component labels — ALL matching rows are summed
@@ -613,6 +625,9 @@ def parse_capiq_cashflow(
             "Cash from Operations",
         ],
         "capex": [
+            "Purchase of Computer Software and Property, Plant and Equipment",
+            "Purchase of Capital Assets",
+            "Acquisition of Property, Plant and Equipment",
             "Purchase of Property and Equipment",
             "Purchase of Property, Equipment and Other Assets",
             "Capital Expenditures",

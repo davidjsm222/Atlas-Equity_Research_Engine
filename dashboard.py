@@ -8,12 +8,15 @@ Usage:
 import os
 import re
 import glob
+import tempfile
+import traceback
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 from fetch_market_data import fetch_market_data
+from pdf_generator import PDFReport
 
 # ---------------------------------------------------------------------------
 # Config
@@ -455,6 +458,88 @@ st.sidebar.markdown("""
 """, unsafe_allow_html=True)
 
 page = st.sidebar.radio("View", ["Overview", "Company Deep Dive", "Peer Comparison", "Screener"], label_visibility="collapsed")
+
+# ---------------------------------------------------------------------------
+# PDF Report Generation
+# ---------------------------------------------------------------------------
+st.sidebar.markdown("""
+    <div style="background-color: #111111; padding: 1rem; border-bottom: 2px solid #333333; margin-top: 2rem;">
+        <h2 style="color: #FFB000; font-family: monospace; margin: 0;">GENERATE REPORT</h2>
+    </div>
+""", unsafe_allow_html=True)
+
+# Company selection
+report_companies = st.sidebar.multiselect(
+    "Select Companies",
+    options=company_names,
+    default=company_names,  # All companies by default
+    help="Choose companies to include in the report"
+)
+
+# Section selection
+section_options = {
+    "Overview": "overview",
+    "Company Deep Dives": "deep_dive",
+    "Screener": "screener"
+}
+
+selected_section_labels = st.sidebar.multiselect(
+    "Select Sections",
+    options=list(section_options.keys()),
+    default=list(section_options.keys()),  # All sections by default
+    help="Choose which sections to include in the report"
+)
+
+# Convert labels to internal section names
+report_sections = [section_options[label] for label in selected_section_labels]
+
+# Export button
+if st.sidebar.button("Export PDF", type="primary", use_container_width=True):
+    if not report_companies:
+        st.sidebar.error("Please select at least one company")
+    elif not report_sections:
+        st.sidebar.error("Please select at least one section")
+    else:
+        try:
+            with st.spinner("Generating PDF report..."):
+                # Create temporary file
+                with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+                    tmp_path = tmp.name
+                
+                # Build PDF report
+                report = PDFReport(
+                    company_data=company_data,
+                    cashflow_data=cashflow_data,
+                    valuation=valuation,
+                    selected_companies=report_companies,
+                    sections=report_sections
+                )
+                report.build(tmp_path)
+                
+                # Read PDF bytes
+                with open(tmp_path, "rb") as f:
+                    pdf_bytes = f.read()
+                
+                # Clean up temp file
+                os.unlink(tmp_path)
+                
+                # Serve download
+                st.sidebar.download_button(
+                    label="Download Report",
+                    data=pdf_bytes,
+                    file_name="atlas_report.pdf",
+                    mime="application/pdf",
+                    type="primary",
+                    use_container_width=True
+                )
+                
+                st.sidebar.success(f"Report generated ({len(pdf_bytes):,} bytes)")
+                
+        except Exception as e:
+            st.sidebar.error("PDF generation failed")
+            error_details = f"**Error:** {type(e).__name__}: {str(e)}\n\n**Traceback:**\n```\n{traceback.format_exc()}\n```"
+            st.sidebar.expander("Error Details", expanded=True).markdown(error_details)
+
 
 # ---------------------------------------------------------------------------
 # Helper: format helpers
