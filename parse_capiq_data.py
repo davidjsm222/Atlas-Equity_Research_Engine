@@ -6,6 +6,7 @@ Gross Profit, and Operating Income, then calculates margins and YoY changes.
 """
 
 import json
+import warnings
 import sys
 import glob
 import os
@@ -28,12 +29,22 @@ def detect_capiq_units(ws) -> str:
         Unit string as found in the file (e.g. "Thousands", "Millions").
         Falls back to "Thousands" with a warning if not detected.
     """
-    for row_idx in range(1, 26):
+    for row_idx in range(1, 35):
         cell_a = ws.cell(row=row_idx, column=1).value
-        if cell_a is not None and str(cell_a).strip().lower() == "units":
+        if cell_a is None:
+            continue
+        cell_str = str(cell_a).strip()
+        cell_lower = cell_str.lower()
+        # Standard CapIQ format: "Units" label in col A, value in col B
+        if cell_lower == "units":
             cell_b = ws.cell(row=row_idx, column=2).value
             if cell_b is not None:
                 return str(cell_b).strip()
+        # SNL Financial format: inline unit notation in col A, e.g. "(in thousands)"
+        if "(in thousands)" in cell_lower:
+            return "Thousands"
+        if "(in millions)" in cell_lower:
+            return "Millions"
     print("  Warning: Could not detect units from CapIQ header; assuming Thousands.")
     return "Thousands"
 
@@ -80,11 +91,14 @@ def parse_capiq_income_statement(
         "revenue": [
             "Total Revenues",
             "Total Revenue",
+            "Total Operating Revenues",
             "Net Revenues",
             "Net Revenue",
             "Net Sales",
+            "Sales",
             "Revenues",
             "Revenue",
+            "Total revenues",
             "Ciq Balancing Calc.-revenue",
         ],
         "gross_profit": [
@@ -98,6 +112,9 @@ def parse_capiq_income_statement(
             "Operating Income",
             "Operating income",
             "Income from Operations",
+            "Income before income taxes",
+            "Income Before Income Taxes",
+            "Net Income (Loss) Before Provision (Benefit) for Income Taxes",
         ],
         "net_income": [
             "Net Income (Loss)",
@@ -116,8 +133,8 @@ def parse_capiq_income_statement(
                 variation_lookup[lower] = (key, priority)
 
     # --- Locate key rows by scanning column A labels ---
-    # Track all candidate matches per metric, then pick the best (lowest priority)
-    label_candidates = {}  # metric_key -> list of (priority, row_idx, has_data)
+    # Track all candidate matches per metric, then pick the best.
+    label_candidates = {}  # metric_key -> list of (priority, row_idx, data_count)
     all_row_labels = []
     period_header_row = None
     period_date_row = None
@@ -133,29 +150,36 @@ def parse_capiq_income_statement(
         # Period headers row starts with "Recommended:" in col A
         if cell_str.startswith("Recommended:"):
             period_header_row = row_idx
-        elif cell_str == "Period Ended":
+        elif cell_str in ("Period Ended", "As Of Date"):
             period_date_row = row_idx
 
         match = variation_lookup.get(cell_str.lower())
         if match:
             metric_key, priority = match
-            
-            # Check if this row has numeric data in any column (not just a section header)
-            has_data = False
-            for col_idx in range(2, min(ws.max_column + 1, 25)):  # Check first ~20 data columns
-                val = ws.cell(row=row_idx, column=col_idx).value
-                if val is not None and isinstance(val, (int, float)):
-                    has_data = True
-                    break
-            
-            label_candidates.setdefault(metric_key, []).append((priority, row_idx, has_data))
 
-    # Pick the best match for each metric
-    # Priority: has_data=True > lower priority number > later row
+            # Count how many columns have actual numeric data.
+            # Using count (not just a boolean) lets us prefer the row with the
+            # most coverage when the same label appears multiple times or when
+            # two labels have the same priority but different data completeness
+            # (e.g. Medtronic has "Sales" for 11 quarters and "Net Sales" for 1).
+            data_count = sum(
+                1 for col_idx in range(2, ws.max_column + 1)
+                if isinstance(ws.cell(row=row_idx, column=col_idx).value, (int, float))
+            )
+            label_candidates.setdefault(metric_key, []).append((priority, row_idx, data_count))
+
+    # Pick the best match for each metric.
+    # Selection key: most non-null columns first, then lower priority number,
+    # then earlier row.  This correctly handles:
+    #   - Section headers (data_count=0) vs data rows (data_count>0)
+    #   - Duplicate labels in different sections (ZimmerBiomet "Total Current
+    #     Liabilities" appears in both current and non-current sections)
+    #   - Partially-populated rows (Medtronic "Net Sales" has 1 quarter vs
+    #     "Sales" has 11 quarters)
     label_row_map = {}
     for metric_key, candidates in label_candidates.items():
-        # Sort by: has_data (True first), priority (lower first), row (later first)
-        best = min(candidates, key=lambda x: (not x[2], x[0], -x[1]))
+        # Sort by: data_count desc, priority asc, row_idx asc
+        best = min(candidates, key=lambda x: (-x[2], x[0], x[1]))
         label_row_map[metric_key] = best[1]
 
     if debug:
@@ -326,6 +350,8 @@ def parse_capiq_balance_sheet(
             "Cash & Cash Equivalents",
             "Cash & Equivalents",
             "Cash and Equivalents",
+            "Cash, cash equivalents, and restricted cash",
+            "Cash and cash equivalents",
             "Cash",
         ],
         "total_equity": [
@@ -334,6 +360,8 @@ def parse_capiq_balance_sheet(
             "Total Shareholders' Equity",
             "Total Stockholders Equity",
             "Total Equity",
+            "Total equity",
+            "Total (Deficit) Equity",
         ],
         "current_assets": [
             "Total Current Assets",
@@ -367,6 +395,17 @@ def parse_capiq_balance_sheet(
         "Current Installments of Notes Payable and Long-term Debt",
         "Current Installments of Notes Payable, Long-term Debt and Capital Lease Obligations",
         "Current Portion of Borrowings Under Credit Facility and Finance Lease Obligations",
+        # REIT-specific debt labels
+        "Senior unsecured notes and term loans - net of deferred financing costs",
+        "Long-term Debt, net of current portion",
+        "Long-term Debt, Net of Current Portion",
+        "Unsecured senior notes, net of discount",
+        "Unsecured term loans, net",
+        "Global revolving credit facilities, net",
+        "Secured and other debt, net of discount",
+        "Notes payable",
+        "Financing lease obligations",
+        "Borrowings under revolving line of credit",
     ]
 
     # Deferred revenue component labels — ALL matching rows are summed
@@ -379,6 +418,7 @@ def parse_capiq_balance_sheet(
         "Deferred Revenue, Non-Current",
         "Contract Liabilities",
         "Unearned Revenue",
+        "Unearned revenues",
     ]
 
     # Build lookup: lowercased variation -> (metric key, priority)
@@ -410,7 +450,7 @@ def parse_capiq_balance_sheet(
 
         if cell_str.startswith("Recommended:"):
             period_header_row = row_idx
-        elif cell_str == "Period Ended":
+        elif cell_str in ("Period Ended", "As Of Date"):
             period_date_row = row_idx
 
         cell_lower = cell_str.lower()
@@ -419,42 +459,37 @@ def parse_capiq_balance_sheet(
         match = variation_lookup.get(cell_lower)
         if match:
             metric_key, priority = match
-            has_data = False
-            for col_idx in range(2, min(ws.max_column + 1, 25)):
-                val = ws.cell(row=row_idx, column=col_idx).value
-                if val is not None and isinstance(val, (int, float)):
-                    has_data = True
-                    break
+            data_count = sum(
+                1 for col_idx in range(2, ws.max_column + 1)
+                if isinstance(ws.cell(row=row_idx, column=col_idx).value, (int, float))
+            )
             label_candidates.setdefault(metric_key, []).append(
-                (priority, row_idx, has_data)
+                (priority, row_idx, data_count)
             )
 
         # Check debt component match
         if cell_lower in debt_label_set:
-            has_data = False
-            for col_idx in range(2, min(ws.max_column + 1, 25)):
-                val = ws.cell(row=row_idx, column=col_idx).value
-                if val is not None and isinstance(val, (int, float)):
-                    has_data = True
-                    break
+            has_data = any(
+                isinstance(ws.cell(row=row_idx, column=col_idx).value, (int, float))
+                for col_idx in range(2, ws.max_column + 1)
+            )
             if has_data:
                 debt_rows.append(row_idx)
 
         # Check deferred revenue component match
         if cell_lower in deferred_rev_label_set:
-            has_data = False
-            for col_idx in range(2, min(ws.max_column + 1, 25)):
-                val = ws.cell(row=row_idx, column=col_idx).value
-                if val is not None and isinstance(val, (int, float)):
-                    has_data = True
-                    break
+            has_data = any(
+                isinstance(ws.cell(row=row_idx, column=col_idx).value, (int, float))
+                for col_idx in range(2, ws.max_column + 1)
+            )
             if has_data:
                 deferred_rev_rows.append(row_idx)
 
-    # Pick best match per single-row metric
+    # Pick best match per single-row metric.
+    # Selection key: most non-null columns first, then lower priority, then earlier row.
     label_row_map = {}
     for metric_key, candidates in label_candidates.items():
-        best = min(candidates, key=lambda x: (not x[2], x[0], -x[1]))
+        best = min(candidates, key=lambda x: (-x[2], x[0], x[1]))
         label_row_map[metric_key] = best[1]
 
     if debug:
@@ -469,15 +504,14 @@ def parse_capiq_balance_sheet(
     if period_header_row is None or period_date_row is None:
         raise ValueError("Could not find period header or date rows in the file.")
 
-    # Validate required single-row metrics (deferred_revenue is optional)
-    required = {"cash", "total_equity", "current_assets", "current_liabilities", "total_assets"}
+    # Validate required single-row metrics (current_assets/liabilities and deferred_revenue are optional)
+    required = {"cash", "total_equity", "total_assets"}
+    optional_single_row = {"current_assets", "current_liabilities"}
     missing = required - set(label_row_map.keys())
     if missing:
         label_names = {
             "cash": "Cash",
             "total_equity": "Total Equity",
-            "current_assets": "Total Current Assets",
-            "current_liabilities": "Total Current Liabilities",
             "total_assets": "Total Assets",
         }
         msg_parts = [f"Could not find the following metrics in {os.path.basename(filepath)}:"]
@@ -489,6 +523,15 @@ def parse_capiq_balance_sheet(
         for lbl in all_row_labels:
             msg_parts.append(f"  - {lbl!r}")
         raise ValueError("\n".join(msg_parts))
+
+    company_name_bs = (
+        os.path.basename(filepath).split("_")[1]
+        if "_" in os.path.basename(filepath)
+        else os.path.basename(filepath)
+    )
+    for opt in sorted(optional_single_row - set(label_row_map.keys())):
+        opt_display = {"current_assets": "Total Current Assets", "current_liabilities": "Total Current Liabilities"}
+        print(f"  Warning: {company_name_bs} - {opt_display[opt]} not found. Current Ratio will show as N/A.")
 
     if not deferred_rev_rows:
         company_name = (
@@ -535,6 +578,7 @@ def parse_capiq_balance_sheet(
 
     start_idx = max(0, total_available - num_quarters)
     end_idx = total_available
+    n = end_idx - start_idx
 
     def read_row_values(row_num):
         """Read numeric values for data columns, applying units_multiplier to normalize to thousands."""
@@ -550,12 +594,19 @@ def parse_capiq_balance_sheet(
     # Read single-row metrics
     cash = read_row_values(label_row_map["cash"])
     total_equity = read_row_values(label_row_map["total_equity"])
-    current_assets = read_row_values(label_row_map["current_assets"])
-    current_liabilities = read_row_values(label_row_map["current_liabilities"])
+    current_assets = (
+        read_row_values(label_row_map["current_assets"])
+        if "current_assets" in label_row_map
+        else [np.nan] * n
+    )
+    current_liabilities = (
+        read_row_values(label_row_map["current_liabilities"])
+        if "current_liabilities" in label_row_map
+        else [np.nan] * n
+    )
     total_assets = read_row_values(label_row_map["total_assets"])
 
     # Compute deferred revenue by summing all component rows (current + non-current)
-    n = end_idx - start_idx
     if deferred_rev_rows:
         deferred_revenue = [0.0] * n
         for dr_row in deferred_rev_rows:
@@ -600,7 +651,9 @@ def parse_capiq_cashflow(
 ) -> pd.DataFrame:
     """Parse a CapIQ cash flow statement Excel export and return a DataFrame.
 
-    Extracts Operating Cash Flow and CapEx for each quarter.
+    Extracts Operating Cash Flow and CapEx for each quarter.  CapEx is computed
+    by summing ALL matching capex component rows (handles companies that split
+    capital expenditures across multiple line items, e.g. Zimmer Biomet).
 
     Args:
         filepath: Path to the CapIQ cash flow .xlsx file.
@@ -617,32 +670,56 @@ def parse_capiq_cashflow(
     detected_units = detect_capiq_units(ws)
     units_multiplier = capiq_units_to_thousands(detected_units)
 
-    metric_variations = {
-        "operating_cash_flow": [
-            "Cash Flow from Operating Activities",
-            "Operating Cash Flow",
-            "Net Cash from Operating Activities",
-            "Cash from Operations",
-        ],
-        "capex": [
-            "Purchase of Computer Software and Property, Plant and Equipment",
-            "Purchase of Capital Assets",
-            "Acquisition of Property, Plant and Equipment",
-            "Purchase of Property and Equipment",
-            "Purchase of Property, Equipment and Other Assets",
-            "Capital Expenditures",
-            "Capex",
-        ],
-    }
+    # Operating cash flow: single required metric (pick best matching row)
+    ocf_variations = [
+        "Cash Flow from Operating Activities",
+        "Cash Flows from Operating Activities",
+        "Operating Cash Flow",
+        "Net Cash from Operating Activities",
+        "Net cash provided by operating activities",
+        "Net cash flows from operating activities",
+        "Cash from Operations",
+    ]
 
-    variation_lookup = {}
-    for key, variations in metric_variations.items():
-        for priority, v in enumerate(variations):
-            lower = v.strip().lower()
-            if lower not in variation_lookup:
-                variation_lookup[lower] = (key, priority)
+    # CapEx: ALL matching rows are summed, handling companies that split
+    # capital expenditures across multiple line items (e.g. Zimmer Biomet
+    # reports "Additions to Other Property, Plant and Equipment" and
+    # "Additions to Instruments" separately).
+    capex_labels = [
+        "Purchase of Computer Software and Property, Plant and Equipment",
+        "Purchase of Capital Assets",
+        "Acquisition of Property, Plant and Equipment",
+        "Purchase of Property Plant, and Equipment",
+        "Purchase of Property and Equipment",
+        "Purchase of Property, Equipment and Other Assets",
+        "Additions to Property and Equipment",
+        "Additions to Property Plant and Equipment",
+        "Additions to Other Property, Plant and Equipment",
+        "Additions to Instruments",
+        "Capital Additions",
+        "Purchases of Fixed Assets",
+        "Capital Expenditures",
+        "Capital expenditures",
+        "Capex",
+        # REIT-specific CapEx labels
+        "Additions to property, buildings, and equipment",
+        "Improvements to investments in real estate",
+        "Capital expenditures to maintain real estate facilities",
+        "Capital expenditures for property enhancements",
+        "Capital expenditures for energy efficiencies (LED lighting, solar)",
+    ]
 
-    label_candidates = {}
+    ocf_lookup = {}
+    for priority, v in enumerate(ocf_variations):
+        lower = v.strip().lower()
+        if lower not in ocf_lookup:
+            ocf_lookup[lower] = priority
+
+    capex_label_set = {lbl.strip().lower() for lbl in capex_labels}
+
+    ocf_candidates = []   # list of (priority, row_idx, has_data)
+    capex_rows = []        # row indices with capex data to sum
+    seen_capex_labels = set()  # deduplicate: only first occurrence per label
     all_row_labels = []
     period_header_row = None
     period_date_row = None
@@ -657,48 +734,59 @@ def parse_capiq_cashflow(
 
         if cell_str.startswith("Recommended:"):
             period_header_row = row_idx
-        elif cell_str == "Period Ended":
+        elif cell_str in ("Period Ended", "As Of Date"):
             period_date_row = row_idx
 
-        match = variation_lookup.get(cell_str.lower())
-        if match:
-            metric_key, priority = match
-            has_data = False
-            for col_idx in range(2, min(ws.max_column + 1, 25)):
-                val = ws.cell(row=row_idx, column=col_idx).value
-                if val is not None and isinstance(val, (int, float)):
-                    has_data = True
-                    break
-            label_candidates.setdefault(metric_key, []).append(
-                (priority, row_idx, has_data)
-            )
+        cell_lower = cell_str.lower()
 
-    label_row_map = {}
-    for metric_key, candidates in label_candidates.items():
-        best = min(candidates, key=lambda x: (not x[2], x[0], -x[1]))
-        label_row_map[metric_key] = best[1]
+        # OCF match
+        if cell_lower in ocf_lookup:
+            data_count = sum(
+                1 for col_idx in range(2, ws.max_column + 1)
+                if isinstance(ws.cell(row=row_idx, column=col_idx).value, (int, float))
+            )
+            ocf_candidates.append((ocf_lookup[cell_lower], row_idx, data_count))
+
+        # CapEx component match — collect all rows (summed later).
+        # Use first occurrence per unique label to avoid double-counting when
+        # the same label appears in both the cash flow section and supplemental
+        # disclosures (e.g. PublicStorage).
+        if cell_lower in capex_label_set and cell_lower not in seen_capex_labels:
+            has_data = any(
+                isinstance(ws.cell(row=row_idx, column=col_idx).value, (int, float))
+                for col_idx in range(2, ws.max_column + 1)
+            )
+            if has_data:
+                capex_rows.append(row_idx)
+                seen_capex_labels.add(cell_lower)
+
+    # Pick best OCF row: most data columns first, then lower priority, then earlier row
+    ocf_row = None
+    if ocf_candidates:
+        best = min(ocf_candidates, key=lambda x: (-x[2], x[0], x[1]))
+        ocf_row = best[1]
 
     if debug:
         print(f"\n[DEBUG] All row labels in column A of {os.path.basename(filepath)}:")
         for lbl in all_row_labels:
             print(f"  - {lbl!r}")
-        print(f"\n[DEBUG] Matched rows: {label_row_map}")
+        print(f"\n[DEBUG] OCF row: {ocf_row}")
+        print(f"[DEBUG] CapEx component rows: {capex_rows}")
         print()
 
     if period_header_row is None or period_date_row is None:
         raise ValueError("Could not find period header or date rows in the file.")
 
-    required = {"operating_cash_flow", "capex"}
-    missing = required - set(label_row_map.keys())
-    if missing:
-        label_names = {
-            "operating_cash_flow": "Operating Cash Flow",
-            "capex": "CapEx",
-        }
+    errors = []
+    if ocf_row is None:
+        tried = ", ".join(f'"{v}"' for v in ocf_variations)
+        errors.append(f"  Operating Cash Flow — tried: {tried}")
+    if not capex_rows:
+        tried = ", ".join(f'"{v}"' for v in capex_labels)
+        errors.append(f"  CapEx — tried: {tried}")
+    if errors:
         msg_parts = [f"Could not find the following metrics in {os.path.basename(filepath)}:"]
-        for m in sorted(missing):
-            tried = ", ".join(f'"{v}"' for v in metric_variations[m])
-            msg_parts.append(f"  {label_names[m]} — tried: {tried}")
+        msg_parts.extend(errors)
         msg_parts.append("")
         msg_parts.append("Row labels found in column A:")
         for lbl in all_row_labels:
@@ -738,8 +826,16 @@ def parse_capiq_cashflow(
                 vals.append(float(raw) * units_multiplier)
         return vals
 
-    ocf = read_row_values(label_row_map["operating_cash_flow"])
-    capex = read_row_values(label_row_map["capex"])
+    ocf = read_row_values(ocf_row)
+
+    # Sum all capex component rows
+    n = end_idx - start_idx
+    capex = [0.0] * n
+    for cr in capex_rows:
+        vals = read_row_values(cr)
+        for i in range(n):
+            if vals[i] is not None:
+                capex[i] += vals[i]
 
     q_labels = quarters[start_idx:end_idx]
     q_dates = dates[start_idx:end_idx]
@@ -850,7 +946,9 @@ def main():
             # Calculate financial ratios from merged data
             df["Net_Debt"] = df["Total_Debt"] - df["Cash"]
             df["Debt_to_Equity"] = df["Total_Debt"] / df["Total_Equity"].replace(0, np.nan)
-            df["Current_Ratio"] = df["Current_Assets"] / df["Current_Liabilities"].replace(0, np.nan)
+            ca = pd.to_numeric(df["Current_Assets"], errors="coerce")
+            cl = pd.to_numeric(df["Current_Liabilities"], errors="coerce").replace(0, np.nan)
+            df["Current_Ratio"] = ca / cl
             df["ROE"] = df["Net_Income"] / df["Total_Equity"].replace(0, np.nan)
             df["Asset_Turnover"] = df["Revenue"] / df["Total_Assets"].replace(0, np.nan)
 
@@ -872,7 +970,9 @@ def main():
                 "Net_Debt", "Debt_to_Equity", "Current_Ratio", "ROE", "Asset_Turnover",
                 "Revenue_Recognition_Quality", "Deferred_Revenue_Growth_YoY",
             ]
-            df[ratio_cols] = df[ratio_cols].replace([np.inf, -np.inf], np.nan)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", FutureWarning)
+                df[ratio_cols] = df[ratio_cols].replace([np.inf, -np.inf], np.nan)
 
             # --- Sanity check: deferred revenue vs revenue ---
             dr_vals = df["Deferred_Revenue"]
@@ -881,19 +981,28 @@ def main():
                 last_valid = dr_vals.last_valid_index()
                 first_row = df.loc[first_valid]
                 last_row = df.loc[last_valid]
+
+                def _fmt(val):
+                    return f"{val:>12,.0f}" if pd.notna(val) and val is not None else "           N/A"
+
+                def _fmt_m(val):
+                    return f"{val / 1_000:>12,.1f}" if pd.notna(val) and val is not None else "           N/A"
+
                 print(f"\n  Deferred Revenue sanity check (all values in $K):")
                 print(f"    First quarter with data: {first_row['Quarter']}")
                 print(f"      Deferred Revenue (raw $K): {first_row['Deferred_Revenue']:>12,.0f}")
-                print(f"      Revenue          (raw $K): {first_row['Revenue']:>12,.0f}")
-                print(f"      DR / Revenue ratio:        {first_row['Deferred_Revenue'] / first_row['Revenue']:>12.2f}x")
+                print(f"      Revenue          (raw $K): {_fmt(first_row['Revenue'])}")
+                if pd.notna(first_row['Revenue']) and first_row['Revenue'] and first_row['Revenue'] != 0:
+                    print(f"      DR / Revenue ratio:        {first_row['Deferred_Revenue'] / first_row['Revenue']:>12.2f}x")
                 print(f"      Deferred Revenue ($M):     {first_row['Deferred_Revenue'] / 1_000:>12,.1f}")
-                print(f"      Revenue          ($M):     {first_row['Revenue'] / 1_000:>12,.1f}")
+                print(f"      Revenue          ($M):     {_fmt_m(first_row['Revenue'])}")
                 print(f"    Last quarter with data:  {last_row['Quarter']}")
                 print(f"      Deferred Revenue (raw $K): {last_row['Deferred_Revenue']:>12,.0f}")
-                print(f"      Revenue          (raw $K): {last_row['Revenue']:>12,.0f}")
-                print(f"      DR / Revenue ratio:        {last_row['Deferred_Revenue'] / last_row['Revenue']:>12.2f}x")
+                print(f"      Revenue          (raw $K): {_fmt(last_row['Revenue'])}")
+                if pd.notna(last_row['Revenue']) and last_row['Revenue'] and last_row['Revenue'] != 0:
+                    print(f"      DR / Revenue ratio:        {last_row['Deferred_Revenue'] / last_row['Revenue']:>12.2f}x")
                 print(f"      Deferred Revenue ($M):     {last_row['Deferred_Revenue'] / 1_000:>12,.1f}")
-                print(f"      Revenue          ($M):     {last_row['Revenue'] / 1_000:>12,.1f}")
+                print(f"      Revenue          ($M):     {_fmt_m(last_row['Revenue'])}")
         else:
             print(f"  Note: No balance sheet found for {company}")
 

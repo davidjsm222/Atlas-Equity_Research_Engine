@@ -8,7 +8,16 @@
       "Bash(timeout:*)",
       "Bash(gtimeout:*)",
       "Bash(pip install:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(python parse_capiq_data.py:*)",
+      "Bash(for company in \"DigitalRealtyTrust,Inc.\" \"IronMountainIncorporated\" \"PublicStorage\")",
+      "Bash(do)",
+      "Bash(echo \"=== $company Balance Sheet ===\")",
+      "Bash(done)",
+      "Bash(echo \"=== $company Cash Flow ===\")",
+      "Bash(for company in \"IronMountainIncorporated\" \"PublicStorage\")",
+      "Bash(echo \"=== $company Income Statement \\(revenue/operating lines\\) ===\")",
+      "Bash(echo \"EXIT: $?\")"
     ]
   }
 }
