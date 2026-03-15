@@ -32,16 +32,22 @@ from reportlab.lib import colors
 
 
 # ---------------------------------------------------------------------------
-# Color Constants (matching dashboard.py lines 141-148)
+# Color Palette (clean blue aesthetic, matches dashboard)
 # ---------------------------------------------------------------------------
 COLORS = {
-    "bg_primary": "#0B0B0B",
-    "bg_panel": "#111111",
-    "text_primary": "#EAEAEA",
-    "text_muted": "#A0A0A0",
-    "accent": "#FFB000",
-    "positive": "#00FF00",
-    "negative": "#FF0000",
+    "page_bg": "#FFFFFF",
+    "dark_navy": "#0A1628",
+    "accent": "#4F9EFF",
+    "section_header": "#1E2D45",
+    "body_text": "#1A1A2E",
+    "muted": "#6B8CAE",
+    "light_gray": "#9CA3AF",
+    "card_bg": "#F8FAFC",
+    "card_bg_tint": "#E8F0FE",
+    "border": "#E2E8F0",
+    "positive": "#22C55E",
+    "negative": "#EF4444",
+    "neutral": "#4F9EFF",
 }
 
 
@@ -119,185 +125,234 @@ def fmt_market_val(v):
 def _get_color_for_revenue_growth(v):
     """Return ReportLab Color for revenue growth value. >20% green, <5% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v > 0.20:
         return hex_to_rgb(COLORS["positive"])
     if v < 0.05:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_margin(v):
     """Gross margin: >70% green, <40% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v > 0.70:
         return hex_to_rgb(COLORS["positive"])
     if v < 0.40:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_op_margin(v):
     """Operating margin: >20% green, <0% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v > 0.20:
         return hex_to_rgb(COLORS["positive"])
     if v < 0.0:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_delta(v):
     """Margin delta: >2% green, <-2% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v > 0.02:
         return hex_to_rgb(COLORS["positive"])
     if v < -0.02:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_margin_trend(v):
     """Margin trend: Expanding green, Contracting red."""
     if pd.isna(v) or v == "" or v == "N/A":
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v == "Expanding":
         return hex_to_rgb(COLORS["positive"])
     if v == "Contracting":
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_fcf_yield(v):
     """FCF Yield: >5% green, <2% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v > 0.05:
         return hex_to_rgb(COLORS["positive"])
     if v < 0.02:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_p_fcf(v):
     """P/FCF: <15 green, >30 red, <0 red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v < 0:
         return hex_to_rgb(COLORS["negative"])
     if v < 15:
         return hex_to_rgb(COLORS["positive"])
     if v > 30:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_current_ratio(v):
     """Current Ratio: >=2.0 green, <1.0 red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v >= 2.0:
         return hex_to_rgb(COLORS["positive"])
     if v < 1.0:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_roe(v):
     """ROE: >10% green, <0% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v > 0.10:
         return hex_to_rgb(COLORS["positive"])
     if v < 0:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_debt_to_equity(v):
     """Debt/Equity: <=0.5 green, >2.0 red, <0 red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v < 0:
         return hex_to_rgb(COLORS["negative"])
     if v > 2.0:
         return hex_to_rgb(COLORS["negative"])
     if v <= 0.5:
         return hex_to_rgb(COLORS["positive"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_deferred_rev_growth(v):
     """Deferred Revenue Growth: >20% green, <5% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v > 0.20:
         return hex_to_rgb(COLORS["positive"])
     if v < 0.05:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
 def _get_color_for_rule_of_40(v):
     """Rule of 40: >=40% green, <20% red."""
     if pd.isna(v):
-        return hex_to_rgb(COLORS["text_primary"])
+        return hex_to_rgb(COLORS["body_text"])
     if v >= 0.40:
         return hex_to_rgb(COLORS["positive"])
     if v < 0.20:
         return hex_to_rgb(COLORS["negative"])
-    return hex_to_rgb(COLORS["text_primary"])
+    return hex_to_rgb(COLORS["body_text"])
 
 
-def apply_terminal_chart_theme(fig):
-    """Apply Bloomberg Terminal theme to Plotly chart."""
+def apply_chart_theme(fig):
+    """Apply clean blue theme: #F8FAFC chart background, #4F9EFF primary, #E2E8F0 gridlines."""
     fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        font=dict(family="Courier New, monospace", size=10, color="#EAEAEA"),
+        template="plotly_white",
+        paper_bgcolor="#F8FAFC",
+        plot_bgcolor="#F8FAFC",
+        font=dict(family="Helvetica, sans-serif", size=9, color="#6B8CAE"),
         xaxis=dict(
-            gridcolor="#333333",
+            gridcolor="#E2E8F0",
             gridwidth=1,
             showgrid=True,
             zeroline=False,
+            tickfont=dict(color="#6B8CAE", size=8),
         ),
         yaxis=dict(
-            gridcolor="#333333",
+            gridcolor="#E2E8F0",
             gridwidth=1,
             showgrid=True,
             zeroline=False,
+            tickfont=dict(color="#6B8CAE", size=8),
         ),
         legend=dict(
-            bgcolor="rgba(0,0,0,0)",
-            bordercolor="#333333",
+            bgcolor="rgba(255,255,255,0)",
+            bordercolor="#E2E8F0",
             borderwidth=1,
-            font=dict(size=9),
+            font=dict(size=8, color="#6B8CAE"),
         ),
-        margin=dict(l=40, r=20, t=20, b=40),
+        margin=dict(l=40, r=20, t=30, b=40),
     )
     return fig
 
 
-class DarkBackground(Flowable):
-    """Custom flowable to draw a dark background rectangle."""
-    
-    def __init__(self, width, height, color):
-        Flowable.__init__(self)
-        self.width = width
-        self.height = height
-        self.color = color
-    
+class _HorizontalAccentLine(Flowable):
+    """Horizontal accent line for cover page."""
+
+    def wrap(self, availWidth, availHeight):
+        self.width = availWidth
+        self.height = 4
+        return (self.width, self.height)
+
     def draw(self):
-        self.canv.setFillColor(self.color)
+        self.canv.saveState()
+        self.canv.setStrokeColor(hex_to_rgb(COLORS["accent"]))
+        self.canv.setLineWidth(2)
+        self.canv.line(0, 2, self.width, 2)
+        self.canv.restoreState()
+
+
+class AccentBar(Flowable):
+    """Thin full-width accent bar (e.g. 6pt) for Deep Dive page headers."""
+
+    def __init__(self, height_pt: float = 6):
+        Flowable.__init__(self)
+        self.height_pt = height_pt
+
+    def wrap(self, availWidth, availHeight):
+        self.width = availWidth
+        return (self.width, self.height_pt)
+
+    def draw(self):
+        self.canv.saveState()
+        self.canv.setFillColor(hex_to_rgb(COLORS["accent"]))
+        self.canv.rect(0, 0, self.width, self.height_pt, fill=1, stroke=0)
+        self.canv.restoreState()
+
+
+class SectionHeader(Flowable):
+    """Filled #0A1628 background, white text, #4F9EFF left border bar, padding."""
+
+    def __init__(self, text: str):
+        Flowable.__init__(self)
+        self.text = text
+
+    def wrap(self, availWidth, availHeight):
+        self.width = availWidth
+        self.height = 36
+        return (self.width, self.height)
+
+    def draw(self):
+        self.canv.saveState()
+        # Dark navy background
+        self.canv.setFillColor(hex_to_rgb(COLORS["dark_navy"]))
         self.canv.rect(0, 0, self.width, self.height, fill=1, stroke=0)
+        # Left blue accent bar (4pt wide)
+        self.canv.setFillColor(hex_to_rgb(COLORS["accent"]))
+        self.canv.rect(0, 6, 4, self.height - 12, fill=1, stroke=0)
+        # White text
+        self.canv.setFillColor(hex_to_rgb("#FFFFFF"))
+        self.canv.setFont("Helvetica-Bold", 12)
+        self.canv.drawString(14, 14, self.text)
+        self.canv.restoreState()
 
 
 class PDFReport:
-    """Generate multi-section equity research PDF with dark terminal styling."""
+    """Generate multi-section equity research PDF with clean blue aesthetic."""
     
     def __init__(
         self,
@@ -345,99 +400,122 @@ class PDFReport:
         self._define_styles()
     
     def _define_styles(self):
-        """Define custom paragraph styles for dark theme."""
-        # Title style: Amber, Courier Bold, 24pt
+        """Define paragraph styles for clean blue aesthetic."""
+        # Title: large, dark, sans-serif
         self.title_style = ParagraphStyle(
             "CustomTitle",
-            fontName="Courier-Bold",
-            fontSize=24,
-            textColor=hex_to_rgb(COLORS["accent"]),
+            fontName="Helvetica-Bold",
+            fontSize=28,
+            textColor=hex_to_rgb(COLORS["section_header"]),
             alignment=TA_CENTER,
             spaceAfter=12,
         )
-        
-        # Heading style: Amber, Courier Bold, 14pt
+        # Heading: bold dark, sans-serif
         self.heading_style = ParagraphStyle(
             "CustomHeading",
-            fontName="Courier-Bold",
-            fontSize=14,
-            textColor=hex_to_rgb(COLORS["accent"]),
+            fontName="Helvetica-Bold",
+            fontSize=12,
+            textColor=hex_to_rgb(COLORS["section_header"]),
             alignment=TA_LEFT,
             spaceAfter=8,
             spaceBefore=12,
         )
-        
-        # Body style: Light gray, Courier, 10pt
+        # Body: dark text, Helvetica
         self.body_style = ParagraphStyle(
             "CustomBody",
-            fontName="Courier",
+            fontName="Helvetica",
             fontSize=10,
-            textColor=hex_to_rgb(COLORS["text_primary"]),
+            textColor=hex_to_rgb(COLORS["body_text"]),
             alignment=TA_LEFT,
             spaceAfter=6,
         )
-        
-        # Muted style: Gray, Courier, 9pt
+        # Muted: gray labels
         self.muted_style = ParagraphStyle(
             "CustomMuted",
-            fontName="Courier",
+            fontName="Helvetica",
             fontSize=9,
-            textColor=hex_to_rgb(COLORS["text_muted"]),
+            textColor=hex_to_rgb(COLORS["muted"]),
             alignment=TA_LEFT,
             spaceAfter=4,
         )
     
     def _cover_page(self) -> List[Flowable]:
         """
-        Generate cover page flowables.
-        
-        Returns:
-            List of PLATYPUS flowables for the cover page
+        Generate cover page: dark navy background, ATLAS wordmark in white,
+        horizontal accent line, date/peer set in light gray, bottom strip in blue.
         """
         flowables = []
-        
-        # Add vertical spacing to center content
-        flowables.append(Spacer(1, 2.5 * inch))
-        
-        # Report title
-        title = Paragraph("ATLAS 1.1 — EQUITY RESEARCH", self.title_style)
-        flowables.append(title)
+
+        flowables.append(Spacer(1, 2.2 * inch))
+
+        # Large ATLAS wordmark in white
+        atlas_style = ParagraphStyle(
+            "AtlasWordmark",
+            fontName="Helvetica-Bold",
+            fontSize=48,
+            textColor=hex_to_rgb("#FFFFFF"),
+            alignment=TA_CENTER,
+            spaceAfter=4,
+        )
+        flowables.append(Paragraph("ATLAS", atlas_style))
+
+        # Horizontal accent line (custom flowable)
         flowables.append(Spacer(1, 0.5 * inch))
-        
-        # Generation timestamp
+        flowables.append(_HorizontalAccentLine())
+        flowables.append(Spacer(1, 0.5 * inch))
+
+        # Generation date in light gray
         now = datetime.now()
-        timestamp = now.strftime("Generated: %B %d, %Y at %I:%M %p")
-        timestamp_para = Paragraph(timestamp, self.muted_style)
-        timestamp_para.alignment = TA_CENTER
-        flowables.append(timestamp_para)
-        flowables.append(Spacer(1, 1 * inch))
-        
-        # Peer set section
-        peer_set_heading = Paragraph("Peer Set:", self.heading_style)
-        flowables.append(peer_set_heading)
-        flowables.append(Spacer(1, 0.2 * inch))
-        
-        # List of selected companies
+        timestamp = now.strftime("Generated %B %d, %Y at %I:%M %p")
+        ts_style = ParagraphStyle(
+            "Timestamp",
+            fontName="Helvetica",
+            fontSize=9,
+            textColor=hex_to_rgb(COLORS["light_gray"]),
+            alignment=TA_CENTER,
+            spaceAfter=12,
+        )
+        flowables.append(Paragraph(timestamp, ts_style))
+        flowables.append(Spacer(1, 0.6 * inch))
+
+        # Peer set in light gray
+        peer_label = ParagraphStyle(
+            "PeerLabel",
+            fontName="Helvetica",
+            fontSize=8,
+            textColor=hex_to_rgb(COLORS["light_gray"]),
+            alignment=TA_LEFT,
+            spaceAfter=6,
+        )
+        flowables.append(Paragraph("PEER SET", peer_label))
+        flowables.append(Spacer(1, 0.15 * inch))
+
+        peer_item_style = ParagraphStyle(
+            "PeerItem",
+            fontName="Helvetica",
+            fontSize=10,
+            textColor=hex_to_rgb(COLORS["light_gray"]),
+            alignment=TA_LEFT,
+            spaceAfter=6,
+        )
         for company in self.selected_companies:
             formatted_company = _fmt_company_name(company)
-            company_item = Paragraph(f"• {formatted_company}", self.body_style)
-            flowables.append(company_item)
-        
-        # Page break after cover page
+            flowables.append(Paragraph(f"• {formatted_company}", peer_item_style))
+
         flowables.append(PageBreak())
-        
         return flowables
     
     def _fig_to_image(self, fig, width_pts, height_pts):
         from reportlab.platypus import Image
         import io
-        apply_terminal_chart_theme(fig)
+        apply_chart_theme(fig)
         # Render at 2x resolution for sharp display at smaller size
         img_bytes = fig.to_image(format="png", width=int(width_pts*2), height=int(height_pts*2), scale=2)
         return Image(io.BytesIO(img_bytes), width=width_pts, height=height_pts)
     
     def _make_table(self, df: pd.DataFrame, col_formats: Dict[str, Callable], 
-                    color_map: Dict[str, Callable] = None, col_widths: List[float] = None) -> Table:
+                    color_map: Dict[str, Callable] = None, col_widths: List[float] = None,
+                    row_text_colors: Dict[int, Color] = None) -> Table:
         """
         Convert pandas DataFrame to ReportLab Table with terminal styling.
         
@@ -474,23 +552,51 @@ class PDFReport:
             if col_name in df_formatted.columns:
                 df_formatted[col_name] = df_formatted[col_name].apply(fmt_func)
         
-        # Create cell paragraph style for wrapping text
+        # Header style: uppercase, muted, no word wrap (splitLongWords=0 prevents mid-word breaks)
+        header_style = ParagraphStyle(
+            "TableHeader",
+            fontName="Helvetica-Bold",
+            fontSize=7,
+            textColor=hex_to_rgb(COLORS["muted"]),
+            leading=8,
+            alignment=TA_LEFT,
+            splitLongWords=0,
+        )
+        # Data style: body text, monospace for numbers (applied via table style)
         cell_style = ParagraphStyle(
             "CellStyle",
             fontName="Courier",
             fontSize=7,
-            textColor=hex_to_rgb(COLORS["text_primary"]),
+            textColor=hex_to_rgb(COLORS["body_text"]),
             leading=8,
             alignment=TA_LEFT,
         )
-        
-        # Convert to list of lists with Paragraph objects for wrapping
-        # Header row first
-        table_data = [[Paragraph(str(col), cell_style) for col in df_formatted.columns]]
-        
-        # Data rows - wrap in Paragraph objects
-        for idx, row in df_formatted.iterrows():
-            table_data.append([Paragraph(str(val), cell_style) for val in row])
+        cell_style_helvetica = ParagraphStyle(
+            "CellStyleHelvetica",
+            fontName="Helvetica",
+            fontSize=7,
+            textColor=hex_to_rgb(COLORS["body_text"]),
+            leading=8,
+            alignment=TA_LEFT,
+        )
+
+        # Header row: uppercase labels
+        table_data = [[Paragraph(str(col).upper(), header_style) for col in df_formatted.columns]]
+
+        # Data rows: monospace for numeric columns, Helvetica for text (Company, Ticker, Margin Trend)
+        # row_text_colors: optional dict mapping 0-based row index -> Color for that row (e.g. white on dark bg)
+        text_cols = {"Company", "Ticker", "Margin Trend"}
+        for row_pos, (idx, row) in enumerate(df_formatted.iterrows()):
+            use_override = row_text_colors and row_pos in row_text_colors
+            if use_override:
+                override_color = row_text_colors[row_pos]
+                override_style = ParagraphStyle(f"CellOverride_{row_pos}", parent=cell_style, textColor=override_color)
+                override_style_h = ParagraphStyle(f"CellOverrideH_{row_pos}", parent=cell_style_helvetica, textColor=override_color)
+            row_paras = []
+            for col_name, val in zip(df_formatted.columns, row):
+                style = (override_style_h if col_name in text_cols else override_style) if use_override else (cell_style_helvetica if col_name in text_cols else cell_style)
+                row_paras.append(Paragraph(str(val), style))
+            table_data.append(row_paras)
         
         # Create table with optional column widths
         if col_widths:
@@ -498,36 +604,29 @@ class PDFReport:
         else:
             table = Table(table_data)
         
-        # Define table style with terminal theme
+        # Define table style: white background, #F8FAFC header, #E2E8F0 dividers
         table_style = TableStyle([
-            # Header row styling: Amber background, black text
-            ('BACKGROUND', (0, 0), (-1, 0), hex_to_rgb(COLORS["accent"])),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('FONTNAME', (0, 0), (-1, 0), 'Courier-Bold'),
+            # Header row: #F8FAFC background, muted uppercase labels
+            ('BACKGROUND', (0, 0), (-1, 0), hex_to_rgb(COLORS["card_bg"])),
+            ('TEXTCOLOR', (0, 0), (-1, 0), hex_to_rgb(COLORS["muted"])),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 7),
             ('ALIGN', (0, 0), (-1, 0), 'LEFT'),
-            
-            # Alternating row backgrounds
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [
-                hex_to_rgb(COLORS["bg_panel"]),
-                hex_to_rgb("#141414")
-            ]),
-            
-            # Data cell styling: Light gray text, monospace font
-            ('TEXTCOLOR', (0, 1), (-1, -1), hex_to_rgb(COLORS["text_primary"])),
-            ('FONTNAME', (0, 1), (-1, -1), 'Courier'),
+            # Bottom border on header
+            ('LINEBELOW', (0, 0), (-1, 0), 1, hex_to_rgb(COLORS["border"])),
+
+            # Data rows: white background
+            ('BACKGROUND', (0, 1), (-1, -1), hex_to_rgb(COLORS["page_bg"])),
+            ('TEXTCOLOR', (0, 1), (-1, -1), hex_to_rgb(COLORS["body_text"])),
             ('FONTSIZE', (0, 1), (-1, -1), 7),
-            
-            # Tight padding for dense layout
-            ('LEFTPADDING', (0, 0), (-1, -1), 4),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 4),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-            
-            # Grid lines: Subtle dark gray
-            ('GRID', (0, 0), (-1, -1), 0.5, hex_to_rgb("#333333")),
-            
-            # Allow text to wrap
+            # Row dividers (#E2E8F0)
+            ('LINEBELOW', (0, 1), (-1, -1), 0.5, hex_to_rgb(COLORS["border"])),
+            ('BOX', (0, 0), (-1, -1), 0.5, hex_to_rgb(COLORS["border"])),
+
+            ('LEFTPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+            ('TOPPADDING', (0, 0), (-1, -1), 4),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ])
         
@@ -628,10 +727,10 @@ class PDFReport:
         ]
         table1_df = overview_df[table1_cols].copy()
         
-        # Rename columns for shorter headers (prevents word-wrap issues)
+        # Short column headers to prevent wrapping
         table1_df = table1_df.rename(columns={
             "EV/Revenue": "EV/Rev",
-            "Revenue Growth YoY": "Rev Growth",
+            "Revenue Growth YoY": "Rev Gr",
             "TTM Revenue": "TTM Rev",
         })
         
@@ -643,7 +742,7 @@ class PDFReport:
             "EV/Rev": fmt_ratio,
             "FCF Yield": fmt_pct,
             "P/FCF": fmt_ratio,
-            "Rev Growth": fmt_pct,
+            "Rev Gr": fmt_pct,
             "TTM Rev": fmt_revenue,
             "Rule of 40": fmt_pct,
         }
@@ -652,7 +751,7 @@ class PDFReport:
         table1_colors = {
             "FCF Yield": _get_color_for_fcf_yield,
             "P/FCF": _get_color_for_p_fcf,
-            "Rev Growth": _get_color_for_revenue_growth,
+            "Rev Gr": _get_color_for_revenue_growth,
             "Rule of 40": _get_color_for_rule_of_40,
         }
         
@@ -668,54 +767,52 @@ class PDFReport:
         ]
         table2_df = overview_df[table2_cols].copy()
         
-        # Rename columns for shorter headers (prevents word-wrap issues)
+        # Short column headers to prevent wrapping
         table2_df = table2_df.rename(columns={
-            "TTM Gross Margin": "TTM Gross Mgn",
-            "Operating Margin": "Op Margin",
-            "TTM Operating Margin": "TTM Op Margin",
-            "Op Margin Delta YoY": "Δ Margin YoY",
-            "Def Rev Growth YoY": "Def Rev Gr%",
+            "TTM Gross Margin": "TTM GM",
+            "Operating Margin": "Op Mgn",
+            "TTM Operating Margin": "TTM OM",
+            "Op Margin Delta YoY": "Δ Mgn",
+            "Def Rev Growth YoY": "Def Rev%",
         })
         
         # Format functions for Table 2 (use renamed column names)
         table2_formats = {
             "Gross Margin": fmt_pct,
-            "TTM Gross Mgn": fmt_pct,
-            "Op Margin": fmt_pct,
-            "TTM Op Margin": fmt_pct,
-            "Δ Margin YoY": fmt_pct,
+            "TTM GM": fmt_pct,
+            "Op Mgn": fmt_pct,
+            "TTM OM": fmt_pct,
+            "Δ Mgn": fmt_pct,
             "Margin Trend": lambda v: v if pd.notna(v) else "N/A",
             "Current Ratio": fmt_ratio,
             "Debt/Equity": fmt_ratio,
             "ROE": fmt_pct,
             "Net Debt": fmt_millions,
-            "Def Rev Gr%": fmt_pct,
+            "Def Rev%": fmt_pct,
         }
         
         # Color map for Table 2 (use renamed column names)
         table2_colors = {
             "Gross Margin": _get_color_for_margin,
-            "TTM Gross Mgn": _get_color_for_margin,
-            "Op Margin": _get_color_for_op_margin,
-            "TTM Op Margin": _get_color_for_op_margin,
-            "Δ Margin YoY": _get_color_for_delta,
+            "TTM GM": _get_color_for_margin,
+            "Op Mgn": _get_color_for_op_margin,
+            "TTM OM": _get_color_for_op_margin,
+            "Δ Mgn": _get_color_for_delta,
             "Margin Trend": _get_color_for_margin_trend,
             "Current Ratio": _get_color_for_current_ratio,
             "Debt/Equity": _get_color_for_debt_to_equity,
             "ROE": _get_color_for_roe,
-            "Def Rev Gr%": _get_color_for_deferred_rev_growth,
+            "Def Rev%": _get_color_for_deferred_rev_growth,
         }
         
         # Column widths for Table 2 (total: 504pts for 7" printable width)
         # Adjusted to fit within 504pts
         table2_widths = [82, 32, 34, 34, 34, 34, 38, 40, 33, 33, 30, 36, 40]  # Total: 500pts
         
-        # Build flowables
-        # Section header
-        header = Paragraph("OVERVIEW — PEER COMPARISON", self.heading_style)
-        flowables.append(header)
-        flowables.append(Spacer(1, 0.2 * inch))
-        
+        # Build flowables — section header with left blue bar
+        flowables.append(SectionHeader("OVERVIEW — PEER COMPARISON"))
+        flowables.append(Spacer(1, 0.25 * inch))
+
         # Table 1: Valuation & Growth
         table1_title = Paragraph("VALUATION & GROWTH", self.heading_style)
         flowables.append(table1_title)
@@ -749,10 +846,9 @@ class PDFReport:
         """
         flowables = []
         
-        # Section header
-        header = Paragraph("INVESTMENT SCREENER", self.heading_style)
-        flowables.append(header)
-        flowables.append(Spacer(1, 0.3 * inch))
+        # Section header with left blue bar
+        flowables.append(SectionHeader("INVESTMENT SCREENER"))
+        flowables.append(Spacer(1, 0.25 * inch))
         
         # Build screening DataFrame (dashboard.py lines 1638-1658)
         screening_rows = []
@@ -905,37 +1001,34 @@ class PDFReport:
         # Column widths
         table2_widths = [120, 40, 50, 50, 40, 50, 60, 40]
         
-        # Create base table
-        table2 = self._make_table(table2_df, table2_formats, col_widths=table2_widths)
-        
-        # Apply row-level color coding (dashboard.py lines 1825-1839)
+        # Build row-level colors: dark green/yellow/red with white text (dashboard.py lines 1825-1839)
         total_filters = len(filter_cols)  # 5
-        row_colors = []
-        
+        row_bg_commands = []
+        row_text_colors = {}
+        white_text = hex_to_rgb("#FFFFFF")
         for idx, (_, row) in enumerate(all_ranked.iterrows()):
             filters_passed = row["filters_passed"]
             percentage = filters_passed / total_filters
-            
-            # Skip header row (row 0)
-            row_idx = idx + 1
+            row_idx = idx + 1  # table row (0=header, 1+=data)
+            data_row_pos = idx  # 0-based data row index for row_text_colors
             
             if percentage == 1.0:  # 100% - dark green
-                bg_color = hex_to_rgb("#1a4d1a")
-            elif percentage >= 0.7:  # 70%+ - dark olive
-                bg_color = hex_to_rgb("#4d4d1a")
+                row_bg_commands.append(('BACKGROUND', (0, row_idx), (-1, row_idx), hex_to_rgb("#1a4d1a")))
+                row_text_colors[data_row_pos] = white_text
+            elif percentage >= 0.7:  # 70%+ - dark yellow
+                row_bg_commands.append(('BACKGROUND', (0, row_idx), (-1, row_idx), hex_to_rgb("#4d4d1a")))
+                row_text_colors[data_row_pos] = white_text
             elif percentage < 0.5:  # <50% - dark red
-                bg_color = hex_to_rgb("#4d1a1a")
-            else:  # 50-70% - no special color, use default
-                bg_color = None
-            
-            if bg_color:
-                row_colors.append(('BACKGROUND', (0, row_idx), (-1, row_idx), bg_color))
+                row_bg_commands.append(('BACKGROUND', (0, row_idx), (-1, row_idx), hex_to_rgb("#4d1a1a")))
+                row_text_colors[data_row_pos] = white_text
         
-        # Apply row colors to table style
-        if row_colors:
-            existing_style = table2._cellStyles
-            for cmd in row_colors:
-                existing_style.append(cmd)
+        # Create table with white text for colored rows
+        table2 = self._make_table(table2_df, table2_formats, col_widths=table2_widths, row_text_colors=row_text_colors)
+        
+        # Apply row background colors
+        if row_bg_commands:
+            for cmd in row_bg_commands:
+                table2.setStyle(TableStyle([cmd]))
         
         flowables.append(table2)
         
@@ -968,16 +1061,16 @@ class PDFReport:
         val = self.valuation.get(company_name, {})
         cf_df = self.cashflow_data.get(company_name)
         
-        # Section header
+        # 6pt accent bar at top of deep dive page, then section header
         formatted_name = _fmt_company_name(company_name)
-        header = Paragraph(f"DEEP DIVE: {formatted_name}", self.heading_style)
-        flowables.append(header)
-        flowables.append(Spacer(1, 0.2 * inch))
+        flowables.append(AccentBar(height_pt=6))
+        flowables.append(SectionHeader(f"DEEP DIVE: {formatted_name}"))
+        flowables.append(Spacer(1, 0.25 * inch))
         
         # ===== KPI SUMMARY CARDS =====
         last = df.iloc[-1]
-        
-        kpi_labels = ["Rule of 40", "Rev Growth", "FCF Margin", "P/FCF", "FCF Yield"]
+
+        kpi_labels = ["RULE OF 40", "REV GROWTH", "FCF MARGIN", "P/FCF", "FCF YIELD"]
         kpi_values = [
             fmt_pct(val.get("Rule_of_40")),
             fmt_pct(last.get("Revenue_Growth_YoY")),
@@ -985,38 +1078,44 @@ class PDFReport:
             fmt_ratio(val.get("P_FCF")),
             fmt_pct(val.get("FCF_Yield")),
         ]
-        
-        # Create KPI table
-        kpi_data = [kpi_labels, kpi_values]
-        kpi_table = Table(kpi_data, colWidths=[100, 100, 100, 100, 100])
+
+        # KPI cards: #E8F0FE background, #4F9EFF top border (2pt), value bold #1E2D45, label small #6B8CAE uppercase
+        kpi_label_style = ParagraphStyle("KpiLabel", fontName="Helvetica", fontSize=6, textColor=hex_to_rgb(COLORS["muted"]))
+        kpi_value_style = ParagraphStyle("KpiValue", fontName="Helvetica-Bold", fontSize=14, textColor=hex_to_rgb(COLORS["section_header"]))
+
+        kpi_row = []
+        for label, value in zip(kpi_labels, kpi_values):
+            inner = Table([
+                [Paragraph(label, kpi_label_style)],
+                [Paragraph(value, kpi_value_style)],
+            ], colWidths=[90])
+            inner.setStyle(TableStyle([
+                ('LEFTPADDING', (0, 0), (-1, -1), 6),
+                ('TOPPADDING', (0, 0), (-1, -1), 4),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+            ]))
+            kpi_row.append(inner)
+
+        kpi_table = Table([kpi_row], colWidths=[90, 90, 90, 90, 90])
         kpi_table.setStyle(TableStyle([
-            # Header row
-            ('BACKGROUND', (0, 0), (-1, 0), hex_to_rgb(COLORS["accent"])),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.black),
-            ('FONTNAME', (0, 0), (-1, 0), 'Courier-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 8),
-            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
-            # Value row (amber values, larger font)
-            ('BACKGROUND', (0, 1), (-1, 1), hex_to_rgb(COLORS["bg_panel"])),
-            ('TEXTCOLOR', (0, 1), (-1, 1), hex_to_rgb(COLORS["accent"])),
-            ('FONTNAME', (0, 1), (-1, 1), 'Courier-Bold'),
-            ('FONTSIZE', (0, 1), (-1, 1), 12),
-            ('ALIGN', (0, 1), (-1, 1), 'CENTER'),
-            # Grid
-            ('GRID', (0, 0), (-1, -1), 0.5, hex_to_rgb("#333333")),
-            ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('BACKGROUND', (0, 0), (-1, -1), hex_to_rgb(COLORS["card_bg_tint"])),
+            ('BOX', (0, 0), (-1, -1), 1, hex_to_rgb(COLORS["border"])),
+            ('LINEABOVE', (0, 0), (-1, 0), 2, hex_to_rgb(COLORS["accent"])),
+            ('LINEBEFORE', (0, 0), (0, -1), 1, hex_to_rgb(COLORS["border"])),
+            ('LINEBEFORE', (1, 0), (1, -1), 1, hex_to_rgb(COLORS["border"])),
+            ('LINEBEFORE', (2, 0), (2, -1), 1, hex_to_rgb(COLORS["border"])),
+            ('LINEBEFORE', (3, 0), (3, -1), 1, hex_to_rgb(COLORS["border"])),
+            ('LINEBEFORE', (4, 0), (4, -1), 1, hex_to_rgb(COLORS["border"])),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
-        
         flowables.append(kpi_table)
         flowables.append(Spacer(1, 0.3 * inch))
         
         # ===== CHARTS =====
         chart_width = 240
         chart_height = 150  # Reduced from 180 to fit all 6 charts + KPI cards on one page
-        
-        # Prepare color references
-        neutral_color = COLORS.get("neutral", "#00FFFF")
         
         # Chart 1: Revenue Bar Chart
         fig1 = px.bar(
@@ -1025,7 +1124,7 @@ class PDFReport:
             y="Revenue",
             text=df["Revenue"].apply(lambda v: f"${v/1000:,.0f}M" if pd.notna(v) else "")
         )
-        fig1.update_traces(textposition="outside", marker_color=neutral_color)
+        fig1.update_traces(textposition="outside", marker_color=COLORS["accent"])
         fig1.update_layout(yaxis_title="Revenue ($K)", xaxis_title="", showlegend=False, title="Revenue")
         
         # Chart 2: Revenue Growth YoY
@@ -1057,7 +1156,7 @@ class PDFReport:
                 y=df["Operating_Margin"],
                 mode="lines+markers",
                 name="Operating Margin",
-                line=dict(color=neutral_color),
+                line=dict(color=COLORS["accent"]),
             )
         )
         fig3.update_layout(
@@ -1076,7 +1175,7 @@ class PDFReport:
             y="Operating_Margin_Delta_YoY",
             markers=True
         )
-        fig4.update_traces(line_color=COLORS["negative"])
+        fig4.update_traces(line_color=COLORS["accent"])
         fig4.update_layout(yaxis_title="Delta (pp)", yaxis_tickformat=".1%", xaxis_title="", title="Op Margin Δ YoY")
         fig4.add_hline(y=0, line_dash="dash", line_color="gray", opacity=0.5)
         
@@ -1139,8 +1238,8 @@ class PDFReport:
                 fig6.add_hline(
                     y=0.40,
                     line_dash="dash",
-                    line_color="#2C3E50",
-                    opacity=0.7,
+                    line_color=COLORS["border"],
+                    opacity=0.8,
                     annotation_text="40% Benchmark",
                     annotation_position="right"
                 )
@@ -1228,15 +1327,28 @@ class PDFReport:
             for company in self.selected_companies:
                 story.extend(self._section_deep_dive(company))
         
-        # Custom page template function for dark background
-        def add_dark_background(canvas, doc):
-            """Add dark background to each page."""
+        # Cover page: dark navy background, bottom strip, no page number
+        def add_cover_decor(canvas, doc):
             canvas.saveState()
-            canvas.setFillColor(hex_to_rgb(COLORS["bg_primary"]))
+            canvas.setFillColor(hex_to_rgb(COLORS["dark_navy"]))
             canvas.rect(0, 0, letter[0], letter[1], fill=1, stroke=0)
+            # Bottom strip in #4F9EFF
+            canvas.setFillColor(hex_to_rgb(COLORS["accent"]))
+            canvas.rect(0, 0, letter[0], 18, fill=1, stroke=0)
             canvas.restoreState()
-        
-        # Build the PDF with dark background on all pages
-        doc.build(story, onFirstPage=add_dark_background, onLaterPages=add_dark_background)
+
+        # Later pages: white background, blue bar at top (4pt), page number bottom right only
+        def add_page_decor(canvas, doc):
+            canvas.saveState()
+            canvas.setFillColor(hex_to_rgb(COLORS["page_bg"]))
+            canvas.rect(0, 0, letter[0], letter[1], fill=1, stroke=0)
+            canvas.setFillColor(hex_to_rgb(COLORS["accent"]))
+            canvas.rect(0, letter[1] - 4, letter[0], 4, fill=1, stroke=0)
+            canvas.setFillColor(hex_to_rgb(COLORS["muted"]))
+            canvas.setFont("Helvetica", 8)
+            canvas.drawRightString(letter[0] - 0.75 * inch, 0.5 * inch, f"Page {canvas.getPageNumber()}")
+            canvas.restoreState()
+
+        doc.build(story, onFirstPage=add_cover_decor, onLaterPages=add_page_decor)
         
         print(f"PDF report generated: {output_path}")
