@@ -1,8 +1,9 @@
 """
-Fetch current market data (price, shares outstanding, market cap) for tracked companies.
+Market data helpers: Yahoo Finance chart API for price, SEC EDGAR for shares outstanding.
 
-Uses SEC EDGAR for shares outstanding and Yahoo Finance chart API for live price.
-No yfinance library dependency — uses requests directly.
+The Streamlit app loads per-ticker rows via ``fetch_single_ticker_market_data`` for the
+active comp set. ``fetch_market_data`` returns an empty frame when no comps are loaded.
+No yfinance dependency — uses requests directly.
 """
 
 from __future__ import annotations
@@ -14,10 +15,9 @@ import pandas as pd
 import requests
 
 
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-TICKER_FILE = os.path.join(SCRIPT_DIR, "ticker_mapping.csv")
-
 logger = logging.getLogger(__name__)
+
+_MARKET_COLS = ["Company", "Ticker", "Price", "Shares_Outstanding", "Market_Cap"]
 
 _DEFAULT_SEC_USER_AGENT = "AtlasEquityResearch/1.0 (atlas-dashboard@example.com)"
 _YAHOO_USER_AGENT = "Mozilla/5.0"
@@ -111,39 +111,13 @@ def _load_cik_map() -> dict:
         return {}
 
 
-def fetch_market_data(ticker_file: str = TICKER_FILE) -> pd.DataFrame:
-    """Fetch current market data for each ticker in the mapping file.
+def fetch_market_data() -> pd.DataFrame:
+    """Return an empty market snapshot frame.
 
-    Uses SEC EDGAR for shares outstanding and Yahoo Finance chart API for price.
-
-    Args:
-        ticker_file: Path to CSV with Company and Ticker columns.
-
-    Returns:
-        DataFrame with Company, Ticker, Price, Shares_Outstanding, Market_Cap.
+    The dashboard builds live rows per ticker via ``fetch_single_ticker_market_data`` when
+    a comp set is loaded from SEC EDGAR; there is no separate watchlist file.
     """
-    mapping = pd.read_csv(ticker_file)
-    cik_map = _load_cik_map()
-
-    rows = []
-    for _, row in mapping.iterrows():
-        company = row["Company"]
-        ticker = row["Ticker"]
-
-        price_data = _fetch_price(ticker)
-        price = price_data["price"]
-        shares = _fetch_shares_outstanding(ticker, cik_map)
-        market_cap = (price * shares) if price and shares else None
-
-        rows.append({
-            "Company": company,
-            "Ticker": ticker,
-            "Price": price,
-            "Shares_Outstanding": shares,
-            "Market_Cap": market_cap,
-        })
-
-    return pd.DataFrame(rows)
+    return pd.DataFrame(columns=_MARKET_COLS)
 
 
 def fetch_single_ticker_market_data(ticker: str, cik_map: dict = None) -> dict:
@@ -189,8 +163,17 @@ def fetch_ticker_bar_price(ticker: str) -> dict | None:
 
 
 def main():
-    print("Fetching market data...\n")
-    df = fetch_market_data()
+    import sys
+
+    tickers = [t.upper().strip() for t in sys.argv[1:] if t.strip()]
+    if not tickers:
+        print("Usage: python -m fetch_market_data TICKER [TICKER ...]")
+        print("Example: python -m fetch_market_data NTNX NET")
+        return
+
+    cik_map = _load_cik_map()
+    rows = [fetch_single_ticker_market_data(t, cik_map=cik_map) for t in tickers]
+    df = pd.DataFrame(rows)
 
     pd.set_option("display.float_format", lambda x: f"{x:,.2f}")
     pd.set_option("display.max_columns", None)

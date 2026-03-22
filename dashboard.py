@@ -177,7 +177,7 @@ def render_ticker_bars(company_data_bar, market_data_bar):
     </div>
     <div class="ticker-bar-2">
         <div style="background:#111827;border-right:1px solid #1E2D45;padding:0 0.75rem;height:100%;display:flex;align-items:center;flex-shrink:0;">
-            <span style="color:#4F9EFF;font-size:0.6rem;font-weight:700;letter-spacing:1.5px;white-space:nowrap;">WATCHLIST</span>
+            <span style="color:#4F9EFF;font-size:0.6rem;font-weight:700;letter-spacing:1.5px;white-space:nowrap;">COMP SET</span>
         </div>
         <div style="overflow:hidden;flex:1;">
             <div class="ticker-track-slow">{company_content}</div>
@@ -432,7 +432,7 @@ def _clean_company_name(raw: str) -> str:
     """Normalize company display names for consistent matching.
 
     Handles CamelCase splitting, comma spacing, and common suffixes so that
-    names from tickers and ticker_mapping.csv align with market data labels.
+    names from tickers align with market data labels used in lookups.
     """
     name = raw.strip()
 

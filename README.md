@@ -16,7 +16,7 @@ A Bloomberg Terminal-inspired financial dashboard for building and analyzing equ
 - **Investment Screener** — filter the loaded comp set by Rule of 40, revenue growth, P/FCF, FCF yield, and margin trend
 - **Notes** — persistent per-comp-set notes saved locally to `notes.json`
 - **PDF export** — generate a formatted multi-section report for any subset of companies
-- **Animated ticker bars** — live scrolling market indices (S&P 500, NASDAQ, VIX, 10Y yield, BTC) + company watchlist
+- **Animated ticker bars** — live scrolling market indices (S&P 500, NASDAQ, VIX, 10Y yield, BTC); loaded comps show in the second bar after you fetch from SEC EDGAR
 
 ## Setup
 
@@ -56,7 +56,6 @@ To reset, click **Clear**.
 | `fetch_financials.py` | SEC EDGAR XBRL data fetcher |
 | `fetch_market_data.py` | Live price + market cap fetcher |
 | `pdf_generator.py` | PDF report builder (ReportLab) |
-| `ticker_mapping.csv` | Watchlist tickers for the scrolling ticker bar |
 | `requirements.txt` | Python dependencies for local runs and Streamlit Cloud |
 | `runtime.txt` | Python version for [Streamlit Community Cloud](https://streamlit.io/cloud) |
 | `notes.json` | Auto-created locally when you use Notes (gitignored; not in the repo) |
@@ -84,15 +83,3 @@ No API keys, rate limits, or paid subscriptions required. SEC EDGAR requests inc
 | **Rule of 40** | Revenue Growth % + FCF Margin % |
 | **Margin Trend** | 4-quarter rolling average of operating margin delta YoY |
 | **TTM** | Trailing twelve months (sum of last 4 quarters) |
-
-## Watchlist
-
-The scrolling company ticker bar at the top is driven by `ticker_mapping.csv`. Add or remove rows to customize it:
-
-```csv
-Company,Ticker
-"Nutanix, Inc.",NTNX
-"Cloudflare, Inc.",NET
-```
-
-This file is independent of which tickers you load for analysis.
