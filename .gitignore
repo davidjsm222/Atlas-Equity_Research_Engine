@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Packaging / tooling
+*.egg-info/
+.eggs/
+dist/
+build/
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Local / IDE
+.DS_Store
+.idea/
+.vscode/
+.cursor/
+.claude/
+
+# App-local data (generated at runtime)
+notes.json
+
+# Logs
+*.log
