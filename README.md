@@ -4,7 +4,9 @@ An equity research engine dashboard for building and analyzing equity comp sets.
 
 **Repository:** [github.com/davidjsm222/Atlas-Equity_Research_Engine](https://github.com/davidjsm222/Atlas-Equity_Research_Engine)
 
-**Run on Streamlit Community Cloud:** create an app from this repo with main file `dashboard.py`, add `requirements.txt`, set Secrets per [Deploy](#deploy-streamlit-community-cloud) below.
+**Live app:** [atlas-er-engine.streamlit.app](https://atlas-er-engine.streamlit.app/)
+
+**Self-host on Streamlit Community Cloud:** connect this repo with main file `dashboard.py`, add `requirements.txt`, and set Secrets per [Deploy](#deploy-streamlit-community-cloud) below.
 
 ## Features
 
