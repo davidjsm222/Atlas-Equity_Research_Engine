@@ -57,7 +57,9 @@ To reset, click **Clear**.
 | `fetch_market_data.py` | Live price + market cap fetcher |
 | `pdf_generator.py` | PDF report builder (ReportLab) |
 | `ticker_mapping.csv` | Watchlist tickers for the scrolling ticker bar |
-| `notes.json` | Auto-created; stores per-comp-set notes |
+| `requirements.txt` | Python dependencies for local runs and Streamlit Cloud |
+| `runtime.txt` | Python version for [Streamlit Community Cloud](https://streamlit.io/cloud) |
+| `notes.json` | Auto-created locally when you use Notes (gitignored; not in the repo) |
 | `.streamlit/config.toml` | Dark theme configuration |
 | `.streamlit/secrets.toml.example` | Example Secrets / env for `ATLAS_SEC_USER_AGENT` (copy or use in Cloud UI) |
 | `LICENSE` | MIT |
