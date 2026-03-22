@@ -1,6 +1,6 @@
 # Atlas
 
-A Bloomberg Terminal-inspired financial dashboard for building and analyzing equity comp sets. Pulls financial statement data directly from SEC EDGAR — no data subscriptions required.
+An equity research engine dashboard for building and analyzing equity comp sets. Pulls financial statement data directly from SEC EDGAR — no data subscriptions required.
 
 **Repository:** [github.com/davidjsm222/Atlas-Equity_Research_Engine](https://github.com/davidjsm222/Atlas-Equity_Research_Engine)
 
