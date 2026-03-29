@@ -34,13 +34,6 @@ pip install -r requirements.txt
 streamlit run dashboard.py
 ```
 
-## Deploy (Streamlit Community Cloud)
-
-1. Connect this repo and create an app with **Main file** `dashboard.py`.
-2. Add **`requirements.txt`** (already in repo).
-3. Under **App settings → Secrets**, set `ATLAS_SEC_USER_AGENT` to a string that identifies you for [SEC fair access](https://www.sec.gov/developer) (see `.streamlit/secrets.toml.example`). `dashboard.py` copies that into `os.environ` before loading fetchers. You can also set the variable in your shell for local runs.
-4. Users load tickers from the sidebar (SEC EDGAR). SEC or Yahoo may occasionally block or rate-limit shared cloud IPs.
-
 ## Usage
 
 1. Enter one or more ticker symbols in the **SEC EDGAR** sidebar panel (e.g. `NTNX, NET, CRWD`)
